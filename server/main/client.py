@@ -1,4 +1,4 @@
-from static.filters import filters
+from components.main.filter_ import filters
 
 
 class Client(object):
@@ -15,9 +15,10 @@ class Client(object):
             self.remove_filter(name, stop)
 
         filt = filters[name](**filter)
+        print('add_filter', name, filter, filt)
         name = [name] + sorted(filter.items())
         self.filters[tuple(name)] = filt
-        return filt
+        return filt.copy()
 
     def remove_filter(self, name, filter):
         name = [name] + sorted(filter.items())

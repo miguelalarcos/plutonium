@@ -1,6 +1,8 @@
 import random
 import json
+print('R(1)')
 from components.lib.epochdate import datetimeargs2epoch
+print('R(2)')
 
 registered_models = {}
 current_call = None
@@ -63,7 +65,12 @@ class Model(object):
 
     def reset(self, func):
         print ('reset', func)
-        self._dep = [item for item in self._dep if item['call'] != func]
+        #self._dep = [item for item in self._dep if item['call'] != func]
+        ret = []
+        for item in self._dep:
+            if item['call'] != func:
+                ret.append(item)
+        self._dep = ret
 
     def __getattr__(self, name):
         if current_call is not None:

@@ -1,6 +1,8 @@
 from browser import window
 import javascript
+
 from components.lib.epochdate import epochargs2datetime
+
 import json
 from components.main.reactive import consume, Model, registered_models
 from components.main.controller import Controller
@@ -35,9 +37,13 @@ def on_message(evt):
                     data_[k] = v
             model = klass(**data_)
 
-        if all([c.test(model, data) for c in Controller.controllers.values()]):
-            print('eliminamos obj de cache')
-            del klass.objects[model.id]
+        print('test all controllers')
+        for c in Controller.controllers.values():
+            print('c.test(model, data):', c, model, data)
+            c.test(model, data)
+        #if all([c.test(model, data) for c in Controller.controllers.values()]):
+        #    print('eliminamos obj de cache')
+        #    del klass.objects[model.id]
 
         print('consume')
         consume()
@@ -46,6 +52,7 @@ def on_message(evt):
 
 
 def init():
+    print('iniciando socket')
     ws = WebSocket("ws://127.0.0.1:8888/ws")
     Model.ws = ws
     Controller.ws = ws

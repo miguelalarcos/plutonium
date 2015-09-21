@@ -1,3 +1,4 @@
+from components.main.models import A
 from components.main.reactive import registered_models
 
 

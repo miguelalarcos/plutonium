@@ -39,8 +39,15 @@ def handle_filter(item):
     filt = client.add_filter(name, item)
     collection = filt.pop('__collection__')
 
-    ret = yield db[collection].find(filt)
-    if ret:
+    cursor = db[collection].find(filt)
+    ret = []
+    while (yield cursor.fetch_next):
+        document = cursor.next_object()
+        document['__collection__'] = collection
+        document['id'] = document['_id']
+        del document['_id']
+        ret.append(document)
+    if len(ret) > 0:
         ret = [(client.socket, r) for r in ret]
         yield q_send.put(ret)
     raise gen.Return('handle_filter done')
@@ -62,20 +69,20 @@ def mongo_consumer():
             ioloop.IOLoop.current().spawn_callback(task, db=DB(db), queue=q_mongo, **item)
         else:
             collection = item['__collection__']
+            del item['__client__']
             model = item
 
             new = False
             deleted = False
-            print('future')
-            future = db[collection].find_one({'_id': model['id']})
             print('buscamos model before')
-            model_before = yield future
+            model_before = yield db[collection].find_one({'_id': model['id']})
             print('model before', model_before)
             if model_before is None:
                 model_id = model.copy()
                 model_id['_id'] = model_id['id']
                 del model_id['id']
-                print('yield insert')
+                del model_id['__collection__']
+                print('yield insert', model_id)
                 if validate(model):
                     yield db[collection].insert(model_id)
                 else:
@@ -98,6 +105,7 @@ def mongo_consumer():
                     continue
 
             for client in Client.clients.values():
+                print('filter of client:', client.filters)
                 for filt in client.filters.values():
                     print('filter:', filt)
                     if filt['__collection__'] != collection:
@@ -106,8 +114,11 @@ def mongo_consumer():
                     print('before:', before)
 
                     if not before and not deleted:
-                        model_after = model_before.copy()
-                        model_after.update(model)
+                        if model_before is None:    # repasar esto
+                            model_after = model.copy()
+                        else:
+                            model_after = model_before.copy()
+                            model_after.update(model)
                         after = pass_filter(filt, model_after)
                         print('after:', after)
                         if after:

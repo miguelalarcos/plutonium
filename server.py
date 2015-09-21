@@ -1,14 +1,17 @@
 from tornado import web, ioloop
+import os
+
+path = os.path.dirname(os.path.abspath(__file__))
 
 
 class MainHandler(web.RequestHandler):
     def get(self):
-        self.render("index.html")
+        self.render("components/main/views/index.html")
 
 app = web.Application([
     (r"/", MainHandler),
-    (r"/main/(.*)", web.StaticFileHandler, {"path": "/home/miguel/development/brython/final"}),
-    (r"/components/(.*)", web.StaticFileHandler, {"path": "/home/miguel/development/brython/final/components"}),
+    (r"/main/(.*)", web.StaticFileHandler, {"path": path}),
+    (r"/components/(.*)", web.StaticFileHandler, {"path": os.path.join(path, 'components')}),
 ])
 
 

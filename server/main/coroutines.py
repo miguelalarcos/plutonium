@@ -6,6 +6,7 @@ import json
 from server.main.client import Client
 from server.main.DB import DB
 from server.main.validation import validate
+from server.main.task import registered_tasks
 from components.lib.filter_mongo import pass_filter
 
 db = motor.MotorClient().test_database
@@ -57,7 +58,7 @@ def mongo_consumer():
             yield handle_filter(item)
         elif '__RPC__' in item.keys():
             name = item.pop('__RPC__')
-            task = tasks[name]
+            task = registered_tasks[name]
             ioloop.IOLoop.current().spawn_callback(task, db=DB(db), queue=q_mongo, **item)
         else:
             collection = item['__collection__']

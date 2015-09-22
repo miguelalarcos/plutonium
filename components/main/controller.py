@@ -10,13 +10,14 @@ from components.main.filter_ import filters
 
 
 def render(model, node, template):
-    print('render', model, node, template)
-    #dct = {k[1:]: v for k, v in model.__dict__.items() if k.startswith('_')}
+    print('*** render', model, node, template)
+    print('**** render', model.__dict__)
     dct = {}
     attrs = re.findall('\{[a-zA-Z_09]+\}', template)
     for attr in attrs:
         attr = attr[1:-1]
         v = getattr(model, attr)
+        print(attr, v, model)
         if callable(v):
             v = v()
         dct[attr] = v
@@ -45,13 +46,15 @@ class FirstModelController(object):
                 render(model, node, template)
 
         self.node = jq('#'+self.name+' .template')
-        reactive_first(self.controller, f, self.node, self.node.html())
+        for n in self.node.find('[r]'):
+            n_ = jq(n)
+            reactive_first(self.controller, f, n_, n_.html())
 
 
 class Controller(object):
     controllers = {}
 
-    def __init__(self, name, key, filter, node=None, first=False):
+    def __init__(self, name, key, filter):
         self.name = name
         self.models = []
         self.key = key
@@ -61,9 +64,7 @@ class Controller(object):
         self.filter = filters[name](**kw)
         self.node = jq("[each='"+self.name+"']")
         self.node.id = self.node.attr('id')
-        #self.node = node
         self.func = render
-        self.first = first
         self.__class__.controllers[name] = self
         self._dep = []
         self._first = None
@@ -81,15 +82,10 @@ class Controller(object):
 
     @first_model.setter
     def first_model(self, model):
-        print('setter')
         if self._first != model:
-            print('self.model != model')
             self._first = model
-            print('self._dep', self._dep)
             for item in self._dep:
-                print('item', item)
                 if item['attr'] == 'first' and item['call'] not in execute:
-                    print('execute.append')
                     execute.append(item['call'])
 
     @classmethod
@@ -166,14 +162,14 @@ class Controller(object):
             ref = jq('#'+str(self.node.id)).children("[reactive_id='"+str(tupla[2])+"']")
 
             ref.before(node)
-            if self.first:
-                ref.remove()
+            if index == 0:
+                self.first_model = model
         elif action == 'after':
-            if not self.first:
-                node = makeDIV(model.id, model, self.func, jq('#'+str(self.node.id)+' .template').html())
+            #if not self.first:
+            node = makeDIV(model.id, model, self.func, jq('#'+str(self.node.id)+' .template').html())
 
-                ref = jq('#'+str(self.node.id)).children("[reactive_id='"+str(tupla[2])+"']")
-                ref.after(node)
+            ref = jq('#'+str(self.node.id)).children("[reactive_id='"+str(tupla[2])+"']")
+            ref.after(node)
 
     def out(self, model):
         index = self.indexById(model.id)
@@ -183,10 +179,11 @@ class Controller(object):
         node = jq('#'+str(self.node.id)).children("[reactive_id='"+str(model.id)+"']")
         node.remove()
         print('eliminado')
-        if self.first and index == 0 and len(self.models) > 0:
-            node = makeDIV(self.models[0].id, self.models[0], self.func, jq('#'+str(self.node.id)+' .template').html())
-            ref = jq('#'+str(self.node.id))
-            ref.append(node)
+        if index == 0 and len(self.models) > 0:
+            print('self.firstmodel=self.models[0]')
+            self.first_model = self.models[0]
+        elif len(self.models) == 0:
+            self.first_model = None # hay que poner un modelo vacío en lugar de None. La responsabilidad es de ModelController
 
     def modify(self, model):
         index = self.indexById(model.id)
@@ -194,15 +191,12 @@ class Controller(object):
         tupla = self.indexInList(model)
         if index == tupla[0]:
             print('ocupa misma posicion')
-        elif self.first:
-            if index == 0:
-                jq('#'+str(self.node.id)).children("[reactive_id='"+str(model.id)+"']").remove()
-                jq('#'+str(self.node.id)).append(makeDIV(self.models[0].id, self.models[0], self.func, jq('#'+str(self.node.id)+' .template').html()))
-            elif tupla[0] == 0:
-                jq('#'+str(self.node.id)).children("[reactive_id='"+str(self.models[0].id)+"']").remove()
-                jq('#'+str(self.node.id)).append(makeDIV(model.id, model, self.func, jq('#'+str(self.node.id)+' .template').html()))
         else:
             print('move to ', model, tupla)
+            if index == 0:
+                self.first_model = self.models[0]
+            elif tupla[0] == 0:
+                self.first_model = model
 
             node = jq('#'+str(self.node.id)).children("[reactive_id='"+str(model.id)+"']")
             node.remove()

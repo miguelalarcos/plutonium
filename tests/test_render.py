@@ -43,20 +43,52 @@ def test_1():
 
 
 def test_render_model():
+    node = MagicMock()
+    node1 = Mock()
+    node2 = Mock()
     jq = MagicMock()
     controller.jq = jq
-    node = jq()
+
     node.html.return_value = '<span r>{x}</span> <span r>{y}</span>'
+    node.find().__iter__.return_value = [node1, node2]
+    node1.html.return_value = '<span r>{x}</span>'
+    node2.html.return_value = '<span r>{y}</span>'
 
     c = controller.Controller(name='', key=[('x', 'desc'), ('y', 'desc')], filter=('0', {'x': 5, 'y': 10}))
     m = A(id=None, x=8, y=9)
     c.models = []
 
+    jq.side_effect = [node, node1, node2]
     cfm = controller.FirstModelController('', c)
+
+    jq.side_effect = None
 
     c.new(m)
     consume()
-    assert call('<span r>8</span> <span r>9</span>') in node.html.mock_calls
-    #assert False
+
+    assert not node.html.called
+    assert call('<span r>8</span>') in node1.html.mock_calls
+    assert call('<span r>9</span>') in node2.html.mock_calls
+
+    m.x = 800
+    assert len(execute) == 1
+    consume()
+    assert call('<span r>800</span>') in node1.html.mock_calls
+
+    m2 = A(id=None, x=801, y=19)
+    c.new(m2)
+    consume()
+    assert c.first_model == m2
+    assert call('<span r>801</span>') in node1.html.mock_calls
+    assert call('<span r>19</span>') in node2.html.mock_calls
+    m2.y = 20
+    assert len(execute) == 1
+    consume()
+    assert call('<span r>20</span>') in node2.html.mock_calls
+    c.out(m2)
+    consume()
+    assert call('<span r>800</span>') in node1.html.mock_calls
+    assert c.first_model == m
+    # falta test de modify
 
 

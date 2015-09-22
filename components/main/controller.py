@@ -13,14 +13,14 @@ def render(model, node, template):
     print('render', model, node, template)
     #dct = {k[1:]: v for k, v in model.__dict__.items() if k.startswith('_')}
     dct = {}
-    for k, v in model.__dict__.items():
-        if k.startswith('_'):
-            dct[k[1:]] = v
-    node.html(template.format(id=model.id, **dct))
     attrs = re.findall('\{[a-zA-Z_09]+\}', template)
     for attr in attrs:
         attr = attr[1:-1]
-        getattr(model, attr)
+        v = getattr(model, attr)
+        if callable(v):
+            v = v()
+        dct[attr] = v
+    node.html(template.format(**dct))
 
 
 def makeDIV(id, model, func, template):
@@ -29,9 +29,8 @@ def makeDIV(id, model, func, template):
     node.html(template)
 
     for n in node.find("[r]"):
-        print('[r]', jq(n))
-        print('n.html()', jq(n).html())
-        reactive(model, func, jq(n), jq(n).html())
+        n_ = jq(n)
+        reactive(model, func, n_, n_.html())
     return node
 
 

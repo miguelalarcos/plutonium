@@ -21,7 +21,7 @@ from components.main.filters import my_filter
 
 key = [('x', 'desc')]
 filter = ('my_filter', {'x': 5, 'y': 10})
-#Controller('MyController', key, filter)
+Controller('MyController', key, filter)
 
 button_send = jq('#button')
 sent_initial_data = False
@@ -30,7 +30,7 @@ sent_initial_data = False
 def send_data():
     global sent_initial_data
     if not sent_initial_data:
-        Controller('MyController', key, filter)
+        #Controller('MyController', key, filter)
         Controller.subscribe_all()
         sent_initial_data = True
     try:

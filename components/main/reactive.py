@@ -6,7 +6,14 @@ print('R(2)')
 
 registered_models = {}
 current_call = None
+
+
+def get_current_call():
+    global current_call
+    return current_call
+
 execute = []
+map_ = {} # function to list of objects to reset
 
 
 def consume():
@@ -15,10 +22,26 @@ def consume():
         call()
 
 
+def reactive_first(controller, func, node, template):
+    def helper():
+        global current_call
+        for c in map_.get(helper, []):
+            c.reset(helper)
+        #del map_[helper]
+        current_call = helper
+        func(controller, node, template)
+        current_call = None
+
+    helper()
+
+
 def reactive(model, func, node=None, template=None):
     def helper():
         global current_call
-        model.reset(helper)
+        model.reset(helper)  # es necesario?? supongo que cuando haga a Model insertar en map_, ya no sera necesario. Entonces podre unificar las dos def reactives
+        for c in map_.get(helper, []):
+            c.reset(helper)
+        #del map_[helper]
         current_call = helper
         func(model, node, template)
         current_call = None
@@ -97,7 +120,7 @@ class Model(object):
             self.__dict__['_'+key] = value
             if dirty:
                 self._dirty.add(key)
-            global execute
+            global execute   # se puede quitar, ¿no?
 
             for item in self._dep:
                 if item['attr'] == key and item['call'] not in execute:

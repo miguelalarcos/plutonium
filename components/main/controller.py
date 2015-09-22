@@ -3,7 +3,7 @@ window = browser.window
 jq = window.jq # jQuery.noConflict(True)
 
 from components.lib.filter_mongo import pass_filter
-from components.main.reactive import reactive
+from components.main.reactive import reactive, get_current_call, execute, map_, reactive_first
 import re
 import json
 from components.main.filter_ import filters
@@ -34,6 +34,20 @@ def makeDIV(id, model, func, template):
     return node
 
 
+class FirstModelController(object):
+    def __init__(self, name, controller):
+        self.name = name
+        self.controller = controller
+
+        def f(controller, node, template):
+            model = controller.first_model
+            if model:
+                render(model, node, template)
+
+        self.node = jq('#'+self.name+' .template')
+        reactive_first(self.controller, f, self.node, self.node.html())
+
+
 class Controller(object):
     controllers = {}
 
@@ -51,11 +65,45 @@ class Controller(object):
         self.func = render
         self.first = first
         self.__class__.controllers[name] = self
+        self._dep = []
+        self._first = None
+
+    @property
+    def first_model(self):
+        current_call = get_current_call()
+        print('getter', current_call)
+        if current_call is not None:
+            self._dep.append({'call': current_call, 'attr': 'first'})
+            r = map_.get(current_call, [])
+            r.append(self)
+            map_[current_call] = r
+        return self._first
+
+    @first_model.setter
+    def first_model(self, model):
+        print('setter')
+        if self._first != model:
+            print('self.model != model')
+            self._first = model
+            print('self._dep', self._dep)
+            for item in self._dep:
+                print('item', item)
+                if item['attr'] == 'first' and item['call'] not in execute:
+                    print('execute.append')
+                    execute.append(item['call'])
 
     @classmethod
     def subscribe_all(cls):
         for c in cls.controllers.values():
             c.subscribe()
+
+    def reset(self, func):
+        ret = []
+        for item in self._dep:
+            if item['call'] != func:
+                ret.append(item)
+        self._dep = ret
+        print('reset', self._dep)
 
     def subscribe(self, filter=None):
         if filter is None:
@@ -107,13 +155,11 @@ class Controller(object):
         action = tupla[1]
         if action == 'append':
             print('append')
-            print(self.node)
-            print(self.node.id)
-            print(jq('#'+str(self.node.id)+' .template').html())
             node = makeDIV(model.id, model, self.func, jq('#'+str(self.node.id)+' .template').html())
 
             ref = jq('#'+str(self.node.id))
             ref.append(node)
+            self.first_model = model
         elif action == 'before':
             node = makeDIV(model.id, model, self.func, jq('#'+str(self.node.id)+' .template').html())
 

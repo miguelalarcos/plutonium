@@ -4,9 +4,12 @@ from mock import Mock, MagicMock, call
 sys.modules['browser'] = Mock()
 
 from components.main.controller import render, makeDIV
-from components.main.reactive import Model, consume, execute
+from components.main.reactive import Model, consume, execute, reactive_first
 from components.main import controller
 
+filters = {}
+controller.filters = filters
+filters['0'] = lambda x, y: {'__collection__': 'A', 'x': {"$gt": x, "$lt": y}}
 
 class A(Model):
     objects = {}
@@ -37,4 +40,23 @@ def test_1():
     assert len(execute) == 1
     consume()
     assert call('<span r>800</span>') in node1.html.mock_calls
+
+
+def test_render_model():
+    jq = MagicMock()
+    controller.jq = jq
+    node = jq()
+    node.html.return_value = '<span r>{x}</span> <span r>{y}</span>'
+
+    c = controller.Controller(name='', key=[('x', 'desc'), ('y', 'desc')], filter=('0', {'x': 5, 'y': 10}))
+    m = A(id=None, x=8, y=9)
+    c.models = []
+
+    cfm = controller.FirstModelController('', c)
+
+    c.new(m)
+    consume()
+    assert call('<span r>8</span> <span r>9</span>') in node.html.mock_calls
+    #assert False
+
 

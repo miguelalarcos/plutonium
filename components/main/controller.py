@@ -9,7 +9,7 @@ import json
 from components.main.filter_ import filters
 
 
-def render(model, node, template):
+def render(model, node, template): # ver si puedo quitar el argumento template y sustituirlo por node.template
     print('*** render', model, node, template)
     print('**** render', model.__dict__)
     dct = {}
@@ -24,13 +24,21 @@ def render(model, node, template):
     node.html(template.format(**dct))
 
 
-def makeDIV(id, model, func, template):
-    print('makeDIV', model, func, template)
+def makeDIV(id, model, func, template, controller=None):
+
     node = jq("<div reactive_id='"+str(id)+"'>test</div>")
     node.html(template)
 
     for n in node.find("[r]"):
         n_ = jq(n)
+        on_click = n_.attr('on-click')
+        if on_click:
+            try:
+                method = getattr(model, on_click)
+                n_.click(method)
+            except AttributeError:
+                method = getattr(controller, on_click)
+                n_.click(lambda: method(model))
         reactive(model, func, n_, n_.html())
     return node
 
@@ -48,6 +56,10 @@ class SelectedModelController(object):
         self.node = jq('#'+self.name+' .template')
         for n in self.node.find('[r]'):
             n_ = jq(n)
+            on_click = n_.attr('on-click')
+            if on_click:
+                method = lambda: getattr(controller.selected, on_click)
+                n_.click(method)
             reactive_selected(self.controller, f, n_, n_.html())
 
 
@@ -152,13 +164,13 @@ class Controller(object):
         action = tupla[1]
         if action == 'append':
             print('append')
-            node = makeDIV(model.id, model, self.func, jq('#'+str(self.node.id)+' .template').html())
+            node = makeDIV(model.id, model, self.func, jq('#'+str(self.node.id)+' .template').html(), self)
 
             ref = jq('#'+str(self.node.id))
             ref.append(node)
             #self.first_model = model
         elif action == 'before':
-            node = makeDIV(model.id, model, self.func, jq('#'+str(self.node.id)+' .template').html())
+            node = makeDIV(model.id, model, self.func, jq('#'+str(self.node.id)+' .template').html(), self)
 
             ref = jq('#'+str(self.node.id)).children("[reactive_id='"+str(tupla[2])+"']")
 
@@ -166,7 +178,7 @@ class Controller(object):
             #if index == 0:
             #    self.first_model = model
         elif action == 'after':
-            node = makeDIV(model.id, model, self.func, jq('#'+str(self.node.id)+' .template').html())
+            node = makeDIV(model.id, model, self.func, jq('#'+str(self.node.id)+' .template').html(), self)
 
             ref = jq('#'+str(self.node.id)).children("[reactive_id='"+str(tupla[2])+"']")
             ref.after(node)

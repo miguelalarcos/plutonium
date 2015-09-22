@@ -17,7 +17,9 @@ class A(Model):
 
 def test_1():
     node1 = Mock()
+    node1.attr.return_value = 'save'
     node2 = Mock()
+    node2.attr.return_value = 'save'
     jq = MagicMock()
     node = MagicMock()
     node.find().__iter__.return_value = [node1, node2]

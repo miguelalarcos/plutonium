@@ -22,7 +22,7 @@ def consume():
         call()
 
 
-def reactive_first(controller, func, node, template):
+def reactive_selected(controller, func, node, template):
     def helper():
         global current_call
         for c in map_.get(helper, []):

@@ -3,7 +3,7 @@ window = browser.window
 jq = window.jq # jQuery.noConflict(True)
 
 from components.lib.filter_mongo import pass_filter
-from components.main.reactive import reactive, get_current_call, execute, map_, reactive_first
+from components.main.reactive import reactive, get_current_call, execute, map_, reactive_selected
 import re
 import json
 from components.main.filter_ import filters
@@ -35,26 +35,26 @@ def makeDIV(id, model, func, template):
     return node
 
 
-class FirstModelController(object):
+class SelectedModelController(object):
     def __init__(self, name, controller):
         self.name = name
         self.controller = controller
 
         def f(controller, node, template):
-            model = controller.first_model
+            model = controller.selected
             if model:
                 render(model, node, template)
 
         self.node = jq('#'+self.name+' .template')
         for n in self.node.find('[r]'):
             n_ = jq(n)
-            reactive_first(self.controller, f, n_, n_.html())
+            reactive_selected(self.controller, f, n_, n_.html())
 
 
 class Controller(object):
     controllers = {}
 
-    def __init__(self, name, key, filter):
+    def __init__(self, name, key, filter, selection_func=None):
         self.name = name
         self.models = []
         self.key = key
@@ -67,25 +67,26 @@ class Controller(object):
         self.func = render
         self.__class__.controllers[name] = self
         self._dep = []
-        self._first = None
+        #self._first = None
+        self.selection_func = selection_func
+        self._selected = None
 
     @property
-    def first_model(self):
+    def selected(self):
         current_call = get_current_call()
-        print('getter', current_call)
         if current_call is not None:
-            self._dep.append({'call': current_call, 'attr': 'first'})
+            self._dep.append({'call': current_call, 'attr': 'selected'})
             r = map_.get(current_call, [])
             r.append(self)
             map_[current_call] = r
-        return self._first
+        return self._selected
 
-    @first_model.setter
-    def first_model(self, model):
-        if self._first != model:
-            self._first = model
+    @selected.setter
+    def selected(self, model):
+        if self._selected != model:
+            self._selected = model
             for item in self._dep:
-                if item['attr'] == 'first' and item['call'] not in execute:
+                if item['attr'] == 'selected' and item['call'] not in execute:
                     execute.append(item['call'])
 
     @classmethod
@@ -155,21 +156,23 @@ class Controller(object):
 
             ref = jq('#'+str(self.node.id))
             ref.append(node)
-            self.first_model = model
+            #self.first_model = model
         elif action == 'before':
             node = makeDIV(model.id, model, self.func, jq('#'+str(self.node.id)+' .template').html())
 
             ref = jq('#'+str(self.node.id)).children("[reactive_id='"+str(tupla[2])+"']")
 
             ref.before(node)
-            if index == 0:
-                self.first_model = model
+            #if index == 0:
+            #    self.first_model = model
         elif action == 'after':
-            #if not self.first:
             node = makeDIV(model.id, model, self.func, jq('#'+str(self.node.id)+' .template').html())
 
             ref = jq('#'+str(self.node.id)).children("[reactive_id='"+str(tupla[2])+"']")
             ref.after(node)
+
+        if self.selection_func:
+            self.selected = self.selection_func(self.models)
 
     def out(self, model):
         index = self.indexById(model.id)
@@ -179,11 +182,13 @@ class Controller(object):
         node = jq('#'+str(self.node.id)).children("[reactive_id='"+str(model.id)+"']")
         node.remove()
         print('eliminado')
-        if index == 0 and len(self.models) > 0:
-            print('self.firstmodel=self.models[0]')
-            self.first_model = self.models[0]
-        elif len(self.models) == 0:
-            self.first_model = None # hay que poner un modelo vacío en lugar de None. La responsabilidad es de ModelController
+        #if index == 0 and len(self.models) > 0:
+        #    self.first_model = self.models[0]
+        #elif len(self.models) == 0:
+        #    self.first_model = None # hay que poner un modelo vacío en lugar de None. La responsabilidad es de ModelController
+
+        if self.selection_func:
+            self.selected = self.selection_func(self.models)
 
     def modify(self, model):
         index = self.indexById(model.id)
@@ -193,10 +198,10 @@ class Controller(object):
             print('ocupa misma posicion')
         else:
             print('move to ', model, tupla)
-            if index == 0:
-                self.first_model = self.models[0]
-            elif tupla[0] == 0:
-                self.first_model = model
+            #if index == 0:
+            #    self.first_model = self.models[0]
+            #elif tupla[0] == 0:
+            #    self.first_model = model
 
             node = jq('#'+str(self.node.id)).children("[reactive_id='"+str(model.id)+"']")
             node.remove()
@@ -209,6 +214,8 @@ class Controller(object):
                 ref.after(node)
 
         self.models.insert(tupla[0], model)
+        if self.selection_func:
+            self.selected = self.selection_func(self.models)
 
     def indexById(self, id):
         index = 0

@@ -3,7 +3,7 @@ window = browser.window
 jq = window.jq # jQuery.noConflict(True)
 
 from components.lib.filter_mongo import pass_filter
-from components.main.reactive import reactive, get_current_call, execute, map_, reactive_selected, consume
+from components.main.reactive import reactive, get_current_call, execute, map_, reactive_selected, consume, add_to_map
 import re
 import json
 from components.main.filter_ import filters
@@ -115,12 +115,12 @@ class SelectedModelController(BaseController):
         self.models = []
         self._dep = []
         self.selected = None
-        self._new = 0
+        self._touch = 0
         self.selection_func = selection_func
         BaseController.controllers[self.name] = self
 
         def f(controller, node, template):
-            controller.new
+            controller.touch
             model = controller.selection_func(controller.models)
             self.selected = model
             #for m in controller.models:
@@ -136,48 +136,27 @@ class SelectedModelController(BaseController):
             if on_click:
                 method = lambda: getattr(self.selected, on_click)
                 n_.click(method)
-            print('reactive_selected')
             reactive_selected(self, f, n_, n_.outerHTML())
 
     @property
-    def selected_(self):
+    def touch(self):
         current_call = get_current_call()
         if current_call is not None:
-            print('selected append current call', current_call)
-            self._dep.append({'call': current_call, 'attr': 'selected'})
-            r = map_.get(current_call, [])
-            r.append(self)
-            map_[current_call] = r
-        return self._selected
+            self._dep.append({'call': current_call, 'attr': 'touch'})
+            add_to_map(self)
+            #r = map_.get(current_call, [])
+            #r.append(self)
+            #map_[current_call] = r
+        return self._touch
 
-    @selected_.setter
-    def selected_(self, model):
-        print('selected.setter', model)
-        if self._selected != model:
-            self._selected = model
-            print('self._dep', self._dep)
+    @touch.setter
+    def touch(self, model):
+        if self._touch != model:
+            self._touch = model
             for item in self._dep:
-                if item['attr'] == 'selected' and item['call'] not in execute:
-                    print('append to execute selected')
+                if item['attr'] == 'touch' and item['call'] not in execute:
                     execute.append(item['call'])
-
-    @property
-    def new(self):
-        current_call = get_current_call()
-        if current_call is not None:
-            self._dep.append({'call': current_call, 'attr': 'new'})
-            r = map_.get(current_call, [])
-            r.append(self)
-            map_[current_call] = r
-        return self._new
-
-    @new.setter
-    def new(self, model):
-        if self._new != model:
-            self._new = model
-            for item in self._dep:
-                if item['attr'] == 'new' and item['call'] not in execute:
-                    execute.append(item['call'])
+            consume()
 
     def reset(self, func):
         print('reset', func)
@@ -200,14 +179,14 @@ class SelectedModelController(BaseController):
                 tupla = self.indexInList(model)
                 self.models.insert(tupla[0], model)
                 #self.selected = self.selection_func(self.models)
-                self.new += 1
+                self.touch += 1
                 return False
             else:
                 print('y sale', 'OUT')
                 index = self.indexById(model.id)
                 del self.models[index]
                 #self.selected = self.selection_func(self.models)
-                self.new += 1
+                self.touch += 1
                 model.selected = False
                 return True
         else:
@@ -217,7 +196,7 @@ class SelectedModelController(BaseController):
                 tupla = self.indexInList(model)
                 self.models.insert(tupla[0], model)
                 #self.selected = self.selection_func(self.models)
-                self.new += 1
+                self.touch += 1
                 return False
             else:
                 print('y permanece fuera')
@@ -259,7 +238,7 @@ class Controller(BaseController):
         return pass_filter(self.filter, raw)
 
     def test(self, model, raw):
-        print('==>test', model, raw, model.id) # porbar con list([m.id for m in self.models])
+        print('==>test', model, raw, model.id)
         models = []
         for m in self.models:
             models.append(m.id)

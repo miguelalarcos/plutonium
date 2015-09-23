@@ -16,10 +16,30 @@ execute = []
 map_ = {} # function to list of objects to reset
 
 
+def add_to_map(obj):
+    lista = map_.get(current_call, [])
+    if obj not in lista:
+        lista.append(obj)
+    map_[current_call] = lista
+
 def consume():
     while execute:
         call = execute.pop()
         call()
+
+
+def basic_reactive(func):
+    def helper():
+        global current_call
+        for c in map_.get(helper, []):
+            print('vamos a resetear')
+            c.reset(helper)
+        #del map_[helper]
+        current_call = helper
+        func()
+        current_call = None
+
+    helper()
 
 
 def reactive_selected(controller, func, node, template):
@@ -98,6 +118,7 @@ class Model(object):
     def __getattr__(self, name):
         if current_call is not None:
             self._dep.append({'call': current_call, 'attr': name})
+            add_to_map(self)
         return self.__dict__['_'+name]
 
     def __setattr__(self, key, value):
@@ -117,7 +138,6 @@ class Model(object):
             self.__dict__['_'+key] = value
             if dirty:
                 self._dirty.add(key)
-            #global execute   # se puede quitar, ¿no?
 
             for item in self._dep:
                 if item['attr'] == key and item['call'] not in execute:

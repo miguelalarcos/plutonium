@@ -16,8 +16,11 @@ filters['0'] = lambda x, y: {'__collection__': 'A', 'x': {"$gt": x, "$lt": y}}
 class A(Model):
     objects = {}
 
+    def hello(self):
+        return 'hola'
 
-def _test_1():
+
+def test_1():
     consume()
     node1 = MagicMock()
     node1.attr.return_value = 'save'
@@ -26,7 +29,7 @@ def _test_1():
     jq = MagicMock()
     node = MagicMock()
     Attribute = namedtuple('Attribute', ['name', 'value'])
-    node1[0].attributes = [Attribute('class', '{x}')]
+    node1[0].attributes = [Attribute('class', '{hello}')]
     node2[0].attributes = []
     node.find().__iter__.return_value = [node1, node2]
     jq.side_effect = [node, node1, node2]
@@ -35,26 +38,26 @@ def _test_1():
 
     model = A(id=None, x=8, y=9)
 
-    node1.outerHTML.return_value = '<span r class="{x}">{x}</span>'
+    node1.outerHTML.return_value = '<span r class="{hello}">{x}</span>'
     node1.html.return_value = '{x}'
     node2.outerHTML.return_value = '<span r>{y}</span>'
     node2.html.return_value = '{y}'
 
-    makeDIV('0', model, render, '<span r class="{x}">{x}</span> <span r>{y}</span>')
+    makeDIV('0', model, render, '<span r class="{hello}">{x}</span> <span r>{y}</span>')
 
     assert call('8') in node1.html.mock_calls
-    assert call('class', '8') in node1.attr.mock_calls
+    assert call('class', 'hola') in node1.attr.mock_calls
 
     assert call('9') in node2.html.mock_calls
     assert model._dirty == set(['selected', 'x', 'y'])
 
     model.x = 800
-    assert len(execute) == 1
-    consume()
+    #assert len(execute) == 1
+    #consume()
     assert call('800') in node1.html.mock_calls
 
 
-def _test_render_model_selection():
+def test_render_model_selection():
     consume()
 
     node = MagicMock()
@@ -86,7 +89,7 @@ def _test_render_model_selection():
     jq.side_effect = None
 
     c.test(m, {'x': 8, 'y': 9})
-    consume()
+    #consume()
 
     assert not node.html.called
     assert call('8') in node1.html.mock_calls
@@ -94,22 +97,22 @@ def _test_render_model_selection():
     assert call('9') in node2.html.mock_calls
 
     m.x = 800
-    assert len(execute) == 1
-    consume()
+    #assert len(execute) == 1
+    #consume()
     assert call('800') in node1.html.mock_calls
 
     m2 = A(id=None, x=801, y=19)
     c.test(m2, {'x': 801, 'y': 19})
-    consume()
+    #consume()
     assert c.selected == m2
     assert call('801') in node1.html.mock_calls
     assert call('19') in node2.html.mock_calls
     m2.y = 20
-    assert len(execute) == 1
-    consume()
+    #assert len(execute) == 1
+    #consume()
     assert call('20') in node2.html.mock_calls
     c.test(m2, {'x': 1001, 'y': 20})
-    consume()
+    #consume()
     assert call('800') in node1.html.mock_calls
     assert c.selected == m
     # falta test de modify

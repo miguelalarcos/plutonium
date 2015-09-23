@@ -29,6 +29,7 @@ def reactive_selected(controller, func, node, template):
             c.reset(helper)
         #del map_[helper]
         current_call = helper
+        print('calling func', controller, node, template)
         func(controller, node, template)
         current_call = None
 
@@ -69,6 +70,7 @@ class Model(object):
             setattr(self, k, v)
 
         self.__class__.objects[id] = self
+        self.selected = False
 
     def validate(self):
         return all([getattr(self, m)() for m in dir(self.__class__) if m.startswith('validate_')])
@@ -96,12 +98,12 @@ class Model(object):
         self._dep = ret
 
     def __getattr__(self, name):
+        print('__getattr__', name, current_call)
         if current_call is not None:
             self._dep.append({'call': current_call, 'attr': name})
         return self.__dict__['_'+name]
 
     def __setattr__(self, key, value):
-        print('__setattr__')
         if key.startswith('_'):
             dirty = False
             key = key[1:]
@@ -112,7 +114,6 @@ class Model(object):
             self.__dict__['_'+key] = value
             if dirty:
                 self._dirty.add(key)
-            print('seteamos sin append execute')
             return
 
         if value != self.__dict__['_'+key]:

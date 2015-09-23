@@ -12,6 +12,7 @@ filters = {}
 controller.filters = filters
 filters['0'] = lambda x, y: {'__collection__': 'A', 'x': {"$gt": x, "$lt": y}}
 
+
 class A(Model):
     objects = {}
 
@@ -45,7 +46,7 @@ def test_1():
     assert call('class', '8') in node1.attr.mock_calls
 
     assert call('9') in node2.html.mock_calls
-    assert model._dirty == set(['x', 'y'])
+    assert model._dirty == set(['selected', 'x', 'y'])
 
     print('----------->', len(execute))
     model.x = 800
@@ -115,3 +116,56 @@ def test_render_model_selection():
     # falta test de modify
 
 
+def test_render_model_selection_selected():
+    consume()
+
+    node = MagicMock()
+    node1 = MagicMock()
+    Attribute = namedtuple('Attribute', ['name', 'value'])
+    node1[0].attributes = [Attribute('class', '{x}')]
+    node2 = MagicMock()
+    node2[0].attributes = []
+    jq = MagicMock()
+    controller.jq = jq
+
+    node.find().__iter__.return_value = [node1, node2]
+    node1.outerHTML.return_value = '<span r class="{x}">{x}</span>'
+    node1.html.return_value = '{x}'
+    node2.outerHTML.return_value = '<span r>{y}</span>'
+    node2.html.return_value = '{y}'
+
+    def selection(lista):
+        print('===========================>selection(lista)')
+        s = None
+        for m_ in lista:
+            print('m_:', m_, m_.selected)
+            if m_.selected:
+                print('m selectd=', m_)
+                s = m_
+        if s:
+            print('retorno s')
+            return s
+        else:
+            print('retorno A()')
+            return A(id=None, x=0, y=0)
+
+    jq.side_effect = [node, node1, node2]
+    c = controller.SelectedModelController('', key=[('x', 'desc'), ('y', 'desc')], filter_=('0', {'x': 0, 'y': 1000}), selection_func=selection)
+    jq.side_effect = None
+
+    m = A(id=None, x=8, y=9)
+    print('c.test', m)
+    c.test(m, {'x': 8, 'y': 9})
+    consume()
+    print('------_>m.selected=True')
+    m.selected = True
+    consume()
+    print('!!!!!!!!!!!!!!!!!!!!', m)
+    assert c.selected == m
+
+    m2 = A(id=None, x=801, y=19)
+    c.test(m2, {'x': 801, 'y': 19})
+    m.selected = False
+    m2.selected = True
+    consume()
+    assert  c.selected == m2

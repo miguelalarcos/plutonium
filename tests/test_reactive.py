@@ -1,6 +1,6 @@
 import sys
 sys.path.insert(0, '.')
-from components.main.reactive import reactive, Model, consume, execute, basic_reactive
+from components.main.reactive import reactive, Model, consume, execute
 
 
 class A(Model):
@@ -12,7 +12,7 @@ class A(Model):
 ret = None
 
 
-def h(model, node, template):
+def h(model):
     global ret
     ret = (model.x, model.y)
 
@@ -22,7 +22,7 @@ def test_1():
 
     m.y = 3
     assert execute == []
-    reactive(m, h)
+    reactive(h, m)
 
     m.x = 7
     m.x = 8
@@ -50,7 +50,7 @@ def test_basic_reactive():
     def rf():
         nonlocal ret
         ret = m.x, m.y
-    basic_reactive(rf)
+    reactive(rf)
     m.y = 8
 
     assert ret == (0, 8)

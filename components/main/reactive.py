@@ -22,49 +22,26 @@ def add_to_map(obj):
         lista.append(obj)
     map_[current_call] = lista
 
+
+def remove_helper_from_map(helper):
+    if helper in map_.keys():
+        del map_[helper]
+
+
 def consume():
     while execute:
         call = execute.pop()
         call()
 
 
-def basic_reactive(func):
-    def helper():
-        global current_call
-        for c in map_.get(helper, []):
-            print('vamos a resetear')
-            c.reset(helper)
-        #del map_[helper]
-        current_call = helper
-        func()
-        current_call = None
-
-    helper()
-
-
-def reactive_selected(controller, func, node, template):
+def reactive(func, *args, **kw):
     def helper():
         global current_call
         for c in map_.get(helper, []):
             c.reset(helper)
-        #del map_[helper]
+        remove_helper_from_map(helper)
         current_call = helper
-        print('calling func', controller, node, template)
-        func(controller, node, template)
-        current_call = None
-
-    helper()
-
-
-def reactive(model, func, node=None, template=None):
-    def helper():
-        global current_call
-        model.reset(helper)  # es necesario?? supongo que cuando haga a Model insertar en map_, ya no sera necesario. Entonces podre unificar las dos def reactives
-        for c in map_.get(helper, []):
-            c.reset(helper)
-        #del map_[helper]
-        current_call = helper
-        func(model, node, template)
+        func(*args, **kw)
         current_call = None
 
     helper()

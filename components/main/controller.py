@@ -3,7 +3,7 @@ window = browser.window
 jq = window.jq # jQuery.noConflict(True)
 
 from components.lib.filter_mongo import pass_filter
-from components.main.reactive import reactive, get_current_call, execute, map_, reactive_selected, consume, add_to_map
+from components.main.reactive import reactive, get_current_call, execute, map_, consume, add_to_map
 import re
 import json
 from components.main.filter_ import filters
@@ -43,7 +43,7 @@ def makeDIV(id, model, func, template, controller=None):
             except AttributeError:
                 method = getattr(controller, on_click)
                 n_.click(lambda: method(model))
-        reactive(model, func, n_, n_.outerHTML())
+        reactive(func, model, n_, n_.outerHTML())
     return node
 
 
@@ -136,7 +136,7 @@ class SelectedModelController(BaseController):
             if on_click:
                 method = lambda: getattr(self.selected, on_click)
                 n_.click(method)
-            reactive_selected(self, f, n_, n_.outerHTML())
+            reactive(f,self, n_, n_.outerHTML())
 
     @property
     def touch(self):

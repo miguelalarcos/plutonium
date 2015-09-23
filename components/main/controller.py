@@ -208,6 +208,7 @@ class SelectedModelController(BaseController):
                 del self.models[index]
                 #self.selected = self.selection_func(self.models)
                 self.new += 1
+                model.selected = False
                 return True
         else:
             print('esta fuera')

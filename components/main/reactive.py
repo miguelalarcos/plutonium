@@ -122,3 +122,4 @@ class Model(object):
             for item in self._dep:
                 if item['attr'] == key and item['call'] not in execute:
                     execute.append(item['call'])
+            consume()

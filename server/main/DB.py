@@ -11,7 +11,7 @@ class DB(object):
 
     @gen.coroutine
     def find(self, parameters):
-        items = yield self.db[self.collection].find(parameters)
+        items = yield self.db[self.collection].find(parameters) #esto no funciona. ver yield para find hecho en otro fichero
         ret = []
         for item in items:
             item.update({'__collection__': self.collection})
@@ -22,7 +22,8 @@ class DB(object):
     def find_one(self, id):
         item = yield self.db[self.collection].find_one({'_id': id})
         item.update({'__collection__': self.collection})
-        raise gen.Return(item)
+        return item
+
 
 
 

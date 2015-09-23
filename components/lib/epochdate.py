@@ -12,14 +12,15 @@ def epoch2datetime(ep):
 
 def datetimeargs2epoch(data):
     data = data.copy()
+    ret = []
     if '__date__' in data.keys():
         del data['__date__']
     for k, v in data.items():
         if type(v) == datetime:
-            if '__date__' not in data.keys():
-                data['__date__'] = []
-            data['__date__'].append(k)
+            ret.append(k)
             data[k] = datetime2epoch(v)
+    if len(ret) > 0:
+        data['__date__'] = ret
     return data
 
 

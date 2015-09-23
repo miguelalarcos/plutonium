@@ -1,9 +1,9 @@
-from .. import server
-from mock import Mock, MagicMock, call
-from ..server import Client, handle_filter
+from server.main.client import Client
+from server.main.coroutines import handle_filter
+from server.main import coroutines
+from mock import MagicMock, call
 
-server.db = MagicMock()
-db = server.db
+db = coroutines.db = MagicMock()
 
 Client('0')
 

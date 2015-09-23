@@ -15,7 +15,6 @@ class Client(object):
             self.remove_filter(name, stop)
 
         filt = filters[name](**filter)
-        print('add_filter', name, filter, filt)
         name = [name] + sorted(filter.items())
         self.filters[tuple(name)] = filt
         return filt.copy()

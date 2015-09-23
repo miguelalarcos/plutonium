@@ -1,4 +1,4 @@
-from ..static.reactive import reactive, Model, consume, execute
+from components.main.reactive import reactive, Model, consume, execute
 
 
 class A(Model):

@@ -17,6 +17,7 @@ class A(Model):
 
 
 def test_1():
+    consume()
     node1 = MagicMock()
     node1.attr.return_value = 'save'
     node2 = MagicMock()
@@ -46,6 +47,7 @@ def test_1():
     assert call('9') in node2.html.mock_calls
     assert model._dirty == set(['x', 'y'])
 
+    print('----------->', len(execute))
     model.x = 800
     assert len(execute) == 1
     consume()
@@ -53,6 +55,8 @@ def test_1():
 
 
 def test_render_model_selection():
+    consume()
+
     node = MagicMock()
     node1 = MagicMock()
     Attribute = namedtuple('Attribute', ['name', 'value'])

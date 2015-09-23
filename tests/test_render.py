@@ -78,16 +78,14 @@ def test_render_model_selection():
         else:
             return A(id=None, x=0, y=0)
 
-    c = controller.Controller(name='', key=[('x', 'desc'), ('y', 'desc')], filter=('0', {'x': 5, 'y': 10}), selection_func=selection)
     m = A(id=None, x=8, y=9)
-    c.models = []
 
     jq.side_effect = [node, node1, node2]
-    controller.SelectedModelController('', c)
+    c = controller.SelectedModelController('', key=[('x', 'desc'), ('y', 'desc')], filter_=('0', {'x': 0, 'y': 1000}), selection_func=selection)
 
     jq.side_effect = None
 
-    c.new(m)
+    c.test(m, {'x': 8, 'y': 9})
     consume()
 
     assert not node.html.called
@@ -101,7 +99,7 @@ def test_render_model_selection():
     assert call('800') in node1.html.mock_calls
 
     m2 = A(id=None, x=801, y=19)
-    c.new(m2)
+    c.test(m2, {'x': 801, 'y': 19})
     consume()
     assert c.selected == m2
     assert call('801') in node1.html.mock_calls
@@ -110,7 +108,7 @@ def test_render_model_selection():
     assert len(execute) == 1
     consume()
     assert call('20') in node2.html.mock_calls
-    c.out(m2)
+    c.test(m2, {'x': 1001, 'y': 20})
     consume()
     assert call('800') in node1.html.mock_calls
     assert c.selected == m

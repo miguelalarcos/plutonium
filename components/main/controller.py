@@ -31,7 +31,7 @@ def makeDIV(id, model, func, template, controller=None):
 
     #node = jq("<div reactive_id='"+str(id)+"'>test</div>")
     #node.html(template)
-    node = jq(template)
+    node = jq(template)  # ojo el template original debe llevar reactive_id='{id}'
 
     for n in node.find("[r]"):
         n_ = jq(n)
@@ -47,10 +47,76 @@ def makeDIV(id, model, func, template, controller=None):
     return node
 
 
-class SelectedModelController(object):
-    def __init__(self, name, controller):
+class BaseController(object):
+    controllers = {}
+
+    def indexById(self, id):
+        index = 0
+        for item in self.models:
+            if item.id == id:
+                break
+            index += 1
+        return index
+
+    @staticmethod
+    def compare(a, b, key, order='asc'):
+        v_a = getattr(a, key)
+        v_b = getattr(b, key)
+        if v_a == v_b:
+            return 0
+        if v_a > v_b:
+            if order == 'desc':
+                return 1
+            else:
+                return -1
+        if order == 'desc':
+            return -1
+        else:
+            return 1
+
+    def indexInList(self, model):
+        if self.models == []:
+            return (0, 'append')
+
+        index = 0
+
+        keys = self.key[:]
+        key, order = keys.pop(0)
+        flag = False
+        for item in self.models:
+            while True:
+                ret = Controller.compare(model, item, key, order)
+                if ret == 1:
+                    flag = True
+                    break
+                if ret == 0:
+                    if len(keys):
+                        key, order = keys.pop(0)
+                    else:
+                        flag = True
+                        break
+                else:
+                    break
+            if flag:
+                break
+            index += 1
+        if index == 0:
+            return (index, 'before', self.models[0].id)
+        else:
+            return (index, 'after', self.models[index-1].id)
+
+
+class SelectedModelController(BaseController):
+    def __init__(self, name, key, filter_, selection_func):
         self.name = name
-        self.controller = controller
+        self.key = key
+        name, kw = filter_
+        self.filter = filters[name](**kw)
+        self.models = []
+        self._dep = []
+        self._selected = None
+        self.selection_func = selection_func
+        BaseController.controllers[self.name] = self
 
         def f(controller, node, template):
             model = controller.selected
@@ -62,30 +128,9 @@ class SelectedModelController(object):
             n_ = jq(n)
             on_click = n_.attr('on-click')
             if on_click:
-                method = lambda: getattr(controller.selected, on_click)
+                method = lambda: getattr(self.selected, on_click)
                 n_.click(method)
-            reactive_selected(self.controller, f, n_, n_.outerHTML())
-
-
-class Controller(object):
-    controllers = {}
-
-    def __init__(self, name, key, filter, selection_func=None):
-        self.name = name
-        self.models = []
-        self.key = key
-        name, kw = filter
-        self.filter_json = {'__filter__': name}
-        self.filter_json.update(kw)
-        self.filter = filters[name](**kw)
-        self.node = jq("[each='"+self.name+"']")
-        self.node.id = self.node.attr('id')
-        self.func = render
-        self.__class__.controllers[name] = self
-        self._dep = []
-        #self._first = None
-        self.selection_func = selection_func
-        self._selected = None
+            reactive_selected(self, f, n_, n_.outerHTML())
 
     @property
     def selected(self):
@@ -105,18 +150,65 @@ class Controller(object):
                 if item['attr'] == 'selected' and item['call'] not in execute:
                     execute.append(item['call'])
 
-    @classmethod
-    def subscribe_all(cls):
-        for c in cls.controllers.values():
-            c.subscribe()
-
     def reset(self, func):
         ret = []
         for item in self._dep:
             if item['call'] != func:
                 ret.append(item)
         self._dep = ret
-        print('reset', self._dep)
+
+    def test(self, model, raw):
+        models = []
+        for m in self.models:
+            models.append(m.id)
+        if model.id in models:
+            print('esta dentro')
+            if pass_filter(self.filter, raw):
+                print('y permance dentro', 'MODIFY')
+                index = self.indexById(model.id)
+                del self.models[index]
+                tupla = self.indexInList(model)
+                self.models.insert(tupla[0], model)
+                self.selected = self.selection_func(self.models)
+                return False
+            else:
+                print('y sale', 'OUT')
+                index = self.indexById(model.id)
+                del self.models[index]
+                self.selected = self.selection_func(self.models)
+                return True
+        else:
+            print('esta fuera')
+            if pass_filter(self.filter, raw):
+                print('y entra', 'NEW')
+                tupla = self.indexInList(model)
+                self.models.insert(tupla[0], model)
+                self.selected = self.selection_func(self.models)
+                return False
+            else:
+                print('y permanece fuera')
+                return True #False
+
+
+class Controller(BaseController):
+
+    def __init__(self, name, key, filter):
+        self.name = name
+        self.models = []
+        self.key = key
+        name, kw = filter
+        self.filter_json = {'__filter__': name}
+        self.filter_json.update(kw)
+        self.filter = filters[name](**kw)
+        self.node = jq("[each='"+self.name+"']")
+        self.node.id = self.node.attr('id')
+        self.func = render
+        BaseController.controllers[self.name] = self
+
+    @classmethod
+    def subscribe_all(cls):
+        for c in cls.controllers.values():
+            c.subscribe()
 
     def subscribe(self, filter=None):
         if filter is None:
@@ -175,20 +267,13 @@ class Controller(object):
             #self.first_model = model
         elif action == 'before':
             node = makeDIV(model.id, model, self.func, jq('#'+str(self.node.id)+' .template').outerHTML(), self)
-
             ref = jq('#'+str(self.node.id)).children("[reactive_id='"+str(tupla[2])+"']")
-
             ref.before(node)
-            #if index == 0:
-            #    self.first_model = model
         elif action == 'after':
             node = makeDIV(model.id, model, self.func, jq('#'+str(self.node.id)+' .template').outerHTML(), self)
 
             ref = jq('#'+str(self.node.id)).children("[reactive_id='"+str(tupla[2])+"']")
             ref.after(node)
-
-        if self.selection_func:
-            self.selected = self.selection_func(self.models)
 
     def out(self, model):
         index = self.indexById(model.id)
@@ -198,13 +283,6 @@ class Controller(object):
         node = jq('#'+str(self.node.id)).children("[reactive_id='"+str(model.id)+"']")
         node.remove()
         print('eliminado')
-        #if index == 0 and len(self.models) > 0:
-        #    self.first_model = self.models[0]
-        #elif len(self.models) == 0:
-        #    self.first_model = None # hay que poner un modelo vacío en lugar de None. La responsabilidad es de ModelController
-
-        if self.selection_func:
-            self.selected = self.selection_func(self.models)
 
     def modify(self, model):
         index = self.indexById(model.id)
@@ -214,11 +292,6 @@ class Controller(object):
             print('ocupa misma posicion')
         else:
             print('move to ', model, tupla)
-            #if index == 0:
-            #    self.first_model = self.models[0]
-            #elif tupla[0] == 0:
-            #    self.first_model = model
-
             node = jq('#'+str(self.node.id)).children("[reactive_id='"+str(model.id)+"']")
             node.remove()
             action = tupla[1]
@@ -230,60 +303,4 @@ class Controller(object):
                 ref.after(node)
 
         self.models.insert(tupla[0], model)
-        if self.selection_func:
-            self.selected = self.selection_func(self.models)
 
-    def indexById(self, id):
-        index = 0
-        for item in self.models:
-            if item.id == id:
-                break
-            index += 1
-        return index
-
-    @staticmethod
-    def compare(a, b, key, order='asc'):
-        v_a = getattr(a, key)
-        v_b = getattr(b, key)
-        if v_a == v_b:
-            return 0
-        if v_a > v_b:
-            if order == 'desc':
-                return 1
-            else:
-                return -1
-        if order == 'desc':
-            return -1
-        else:
-            return 1
-
-    def indexInList(self, model):
-        if self.models == []:
-            return (0, 'append')
-
-        index = 0
-
-        keys = self.key[:]
-        key, order = keys.pop(0)
-        flag = False
-        for item in self.models:
-            while True:
-                ret = Controller.compare(model, item, key, order)
-                if ret == 1:
-                    flag = True
-                    break
-                if ret == 0:
-                    if len(keys):
-                        key, order = keys.pop(0)
-                    else:
-                        flag = True
-                        break
-                else:
-                    break
-            if flag:
-                break
-            index += 1
-        if index == 0:
-            return (index, 'before', self.models[0].id)
-        else:
-            return (index, 'after', self.models[index-1].id)

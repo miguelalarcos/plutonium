@@ -89,8 +89,6 @@ class Model(object):
         Model.ws.send(json.dumps(data))
 
     def reset(self, func):
-        print ('reset', func)
-        #self._dep = [item for item in self._dep if item['call'] != func]
         ret = []
         for item in self._dep:
             if item['call'] != func:
@@ -98,7 +96,6 @@ class Model(object):
         self._dep = ret
 
     def __getattr__(self, name):
-        print('__getattr__', name, current_call)
         if current_call is not None:
             self._dep.append({'call': current_call, 'attr': name})
         return self.__dict__['_'+name]
@@ -117,13 +114,11 @@ class Model(object):
             return
 
         if value != self.__dict__['_'+key]:
-            print('value es != a current value')
             self.__dict__['_'+key] = value
             if dirty:
                 self._dirty.add(key)
-            global execute   # se puede quitar, ¿no?
+            #global execute   # se puede quitar, ¿no?
 
             for item in self._dep:
                 if item['attr'] == key and item['call'] not in execute:
-                    print('append to execute model.id', self.id, key, value)
                     execute.append(item['call'])

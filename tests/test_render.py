@@ -48,7 +48,6 @@ def test_1():
     assert call('9') in node2.html.mock_calls
     assert model._dirty == set(['selected', 'x', 'y'])
 
-    print('----------->', len(execute))
     model.x = 800
     assert len(execute) == 1
     consume()
@@ -135,18 +134,13 @@ def test_render_model_selection_selected():
     node2.html.return_value = '{y}'
 
     def selection(lista):
-        print('===========================>selection(lista)')
         s = None
         for m_ in lista:
-            print('m_:', m_, m_.selected)
             if m_.selected:
-                print('m selectd=', m_)
                 s = m_
         if s:
-            print('retorno s')
             return s
         else:
-            print('retorno A()')
             return A(id=None, x=0, y=0)
 
     jq.side_effect = [node, node1, node2]
@@ -154,13 +148,13 @@ def test_render_model_selection_selected():
     jq.side_effect = None
 
     m = A(id=None, x=8, y=9)
-    print('c.test', m)
+
     c.test(m, {'x': 8, 'y': 9})
     consume()
-    print('------_>m.selected=True')
+
     m.selected = True
     consume()
-    print('!!!!!!!!!!!!!!!!!!!!', m)
+
     assert c.selected == m
 
     m2 = A(id=None, x=801, y=19)
@@ -169,3 +163,10 @@ def test_render_model_selection_selected():
     m2.selected = True
     consume()
     assert  c.selected == m2
+
+    m3 = A(id=None, x=1, y=1)
+    c.test(m3, {'x': 1, 'y': 1})
+    m2.selected = False
+    m3.selected = True
+    consume()
+    assert  c.selected == m3

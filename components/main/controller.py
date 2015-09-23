@@ -120,17 +120,12 @@ class SelectedModelController(BaseController):
         BaseController.controllers[self.name] = self
 
         def f(controller, node, template):
-            print('f: current_call', get_current_call())
             controller.new
-            #controller.selected
             model = controller.selection_func(controller.models)
-            #self.__dict__['_selected'] = model
             self.selected = model
-            print('!!!!!!!!!!!!!!!!!! +', model, len(controller.models))
-            for m in controller.models:
-                print('    m.selected', m)
-                m.selected
-            #model = controller.selection_func(controller.models)
+            #for m in controller.models:
+            #    m.selected
+
             if model:
                 render(model, node, template)
 
@@ -204,13 +199,15 @@ class SelectedModelController(BaseController):
                 del self.models[index]
                 tupla = self.indexInList(model)
                 self.models.insert(tupla[0], model)
-                self.selected = self.selection_func(self.models)
+                #self.selected = self.selection_func(self.models)
+                self.new += 1
                 return False
             else:
                 print('y sale', 'OUT')
                 index = self.indexById(model.id)
                 del self.models[index]
-                self.selected = self.selection_func(self.models)
+                #self.selected = self.selection_func(self.models)
+                self.new += 1
                 return True
         else:
             print('esta fuera')

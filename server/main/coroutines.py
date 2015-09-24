@@ -153,6 +153,8 @@ def broadcast(collection, new, model_before, deleted, model):
                     else:
                         before = True # and filt.pass_filter(model_before)
                 else:
+                    docs = yield do_find(filt)
+                    position_after = index_by_id(docs, model['id'])
                     before = False
             else:
                 before = (not new) and filt.pass_filter(model_before)

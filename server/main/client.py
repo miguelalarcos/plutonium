@@ -1,4 +1,5 @@
 from components.main.filter_ import filters
+from components.lib.filter_mongo import Filter
 
 
 class Client(object):
@@ -14,10 +15,11 @@ class Client(object):
             stop = filter.pop('__stop__')
             self.remove_filter(name, stop)
 
-        filt = filters[name](**filter)
+        #filt = filters[name](**filter)
+        filt = Filter(filter)
         name = [name] + sorted(filter.items())
-        self.filters[tuple(name)] = filt
-        return filt.copy()
+        self.filters[tuple(name)] = filt  # filt
+        return filt  #.copy()
 
     def remove_filter(self, name, filter):
         name = [name] + sorted(filter.items())

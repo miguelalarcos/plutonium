@@ -7,7 +7,8 @@ from server.main.client import Client
 from server.main.DB import DB
 from server.main.validation import validate
 from server.main.task import registered_tasks
-from components.lib.filter_mongo import pass_filter
+from components.lib.utils import index_by_id, index_in_list
+
 
 db = motor.MotorClient().test_database
 
@@ -31,27 +32,49 @@ def sender():
 
 
 @gen.coroutine
+def do_find(filt):
+    cursor = db[filt.collection].find(filt.filter)
+    if filt.key:
+        cursor.sort(filt.key)
+    if filt.limit:
+        cursor.limit(filt.limit)
+    ret = []
+    while (yield cursor.fetch_next):
+        document = cursor.next_object()
+        document['__collection__'] = filt.collection
+        document['id'] = document['_id']
+        del document['_id']
+        ret.append(document)
+    return ret
+
+
+@gen.coroutine
 def handle_filter(item):
     client_socket = item.pop('__client__')
     client = Client.clients[client_socket]
 
     name = item.pop('__filter__')
     filt = client.add_filter(name, item)
-    collection = filt.pop('__collection__')
+    #collection = filt.collection   # pop('__collection__')
 
-    cursor = db[collection].find(filt)
-    ret = []
-    while (yield cursor.fetch_next):
-        document = cursor.next_object()
-        document['__collection__'] = collection
-        document['id'] = document['_id']
-        del document['_id']
-        ret.append(document)
+    #cursor = db[collection].find(filt.filter)
+    #if filt.key:
+    #    cursor.sort(filt.key)
+    #if filt.limit:
+    #    cursor.limit(filt.limit)
+    #ret = []
+    #while (yield cursor.fetch_next):
+    #    document = cursor.next_object()
+    #    document['__collection__'] = collection
+    #    document['id'] = document['_id']
+    #    del document['_id']
+    #    ret.append(document)
+    ret = yield do_find(filt)
     if len(ret) > 0:
         ret = [(client.socket, r) for r in ret]
         yield q_send.put(ret)
-    #raise gen.Return('handle_filter done')
-    return # ver si es necesario un argumento a retornar
+
+    return
 
 
 def handle_rpc(item):
@@ -107,29 +130,58 @@ def broadcast(collection, new, model_before, deleted, model):
     for client in Client.clients.values():
         print('filter of client:', client.filters)
         for filt in client.filters.values():
-            print('filter:', filt)
-            if filt['__collection__'] != collection:
-                continue
-            before = (not new) and pass_filter(filt, model_before)
-            print('before:', before)
+            print('filt', filt)
+            break_flag = False
+            position_after = None
+            last_doc = None
 
+            if filt.collection != collection:
+                print('continue')
+                continue
+            if filt.limit:
+                if model_before:
+                    docs = yield do_find(filt)
+                    last_doc = docs[-1]
+                    pos = index_by_id(docs, model_before['id'])
+                    position_after = pos
+                    if pos is not None:
+                        del docs[pos]
+                    pos = index_in_list(docs, filt.key, model_before)
+                    if pos >= filt.limit:
+                        before = False
+                    else:
+                        before = True # and filt.pass_filter(model_before)
+                else:
+                    before = False
+            else:
+                before = (not new) and filt.pass_filter(model_before)
+
+            print('before', before)
+            after = None
             if not before and not deleted:
                 if model_before is None:    # repasar esto
                     model_after = model.copy()
                 else:
                     model_after = model_before.copy()
                     model_after.update(model)
-                after = pass_filter(filt, model_after)
+
+                if filt.limit:
+                    after = position_after <= filt.limit # and filt.pass_filter(model_after)
+                else:
+                    after = filt.pass_filter(model_after)
                 print('after:', after)
                 if after:
                     print('send', client.socket, model)
                     yield q_send.put((client.socket, model))
-                    break
+                    break_flag = True
             else:
                 print('send', client.socket, model)
                 yield q_send.put((client.socket, model))
+                break_flag = True
+            if before and filt.limit and position_after > filt.limit and last_doc and last_doc['_id'] != model['_id']:
+                yield q_send.put((client.socket, last_doc))
+            if break_flag:
                 break
-
 
 @gen.coroutine
 def mongo_consumer():

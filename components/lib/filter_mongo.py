@@ -1,3 +1,44 @@
+from components.main.filter_ import filters
+
+
+class Filter(object):
+    def __init__(self, item):
+        self.name = item.pop('__filter__')
+        self.key = item.pop('__key__', None)
+        self.limit = item.pop('__limit__', None)
+        self.collection = item.pop('__collection__')
+        self.filter = filters[self.name](**item)
+
+    def pass_filter(self, model):
+        print('model en pass_filter', model)
+        if '__deleted__' in model.keys():
+            return False
+        for key, value in self.filter.items():
+            if key == '__collection__':
+                continue
+            v = model.get(key)
+            if v is None:
+                return False
+            if type(value) == int or type(value) == str:
+                if v != value:
+                    return False
+            else:
+                for op, val in value.items():
+                    if op == '$gt':
+                        if v <= val:
+                            return False
+                    elif op == '$lt':
+                        if v >= val:
+                            return False
+                    elif op == '$gte':
+                        if v < val:
+                            return False
+                    elif op == '$lte':
+                        if v > val:
+                            return False
+        return True
+
+"""
 def pass_filter(filter, model):
     print('model en pass_filter', model)
     if '__deleted__' in model.keys():
@@ -26,4 +67,4 @@ def pass_filter(filter, model):
                     if v > val:
                         return False
     return True
-
+"""

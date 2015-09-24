@@ -75,17 +75,21 @@ class BaseController(object):
         return index
 
     @staticmethod
-    def compare(a, b, key, order='asc'):
+    def compare(a, b, key, order=1):
+        if order == 'asc':
+            order = 1
+        if order == 'desc':
+            order = -1
         v_a = getattr(a, key)
         v_b = getattr(b, key)
         if v_a == v_b:
             return 0
         if v_a > v_b:
-            if order == 'desc':
+            if order == -1:
                 return 1
             else:
                 return -1
-        if order == 'desc':
+        if order == -1:
             return -1
         else:
             return 1

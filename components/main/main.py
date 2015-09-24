@@ -8,20 +8,25 @@ window.jq = jq
 
 import random
 print('Iniciando aplicación')
-print('(1)')
 from components.main.models.A import A
-print('(2)', A)
 from components.main.init import init
-print('(3)')
 
 init()
 
-from components.main.controller import Controller
+from components.main.controller import Controller, SelectedModelController
 from components.main.filters import my_filter
 
 key = [('x', 'desc')]
 filter = ('my_filter', {'x': 5, 'y': 10})
 Controller('MyController', key, filter)
+
+
+def select_func(models):
+    if len(models) > 0:
+        return models[0]
+    return A(x=0)
+
+SelectedModelController('first', key, filter, select_func)
 
 button_send = jq('#button')
 sent_initial_data = False

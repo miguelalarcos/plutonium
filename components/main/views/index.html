@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 
 {% block page %}
+    <div id="first">
+        <div class="template"><span r>id:{id}</span> <h2 r>x:{x}</h2></div>
+    </div>
     <div id="container" each="MyController">
       <div class="template"><span r>id:{id}</span> <b r>x:{x}</b></div>
     </div>

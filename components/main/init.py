@@ -38,15 +38,14 @@ def on_message(evt):
             model = klass(**data_)
 
         print('test all controllers')
+        r = []
         for c in BaseController.controllers.values():
-            print('c.test(model, data):', c, model, data)
-            c.test(model, data)
-        #if all([c.test(model, data) for c in Controller.controllers.values()]):
-        #    print('eliminamos obj de cache')
-        #    del klass.objects[model.id]
+            r.append(c.test(model, data))
+        if all(r):
+            del klass.objects[model.id]
 
-        print('consume')
-        consume()
+        #print('consume')
+        #consume()
     except Exception as e:
         print ('******************** error', e)
 

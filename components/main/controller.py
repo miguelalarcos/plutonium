@@ -32,7 +32,7 @@ def makeDIV(id, model, func, template, controller=None):
     #node = jq("<div reactive_id='"+str(id)+"'>test</div>")
     #node.html(template)
     node = jq(template)  # ojo el template original debe llevar reactive_id='{id}'
-
+    node.removeClass('template')
     for n in node.find("[r]"):
         n_ = jq(n)
         on_click = n_.attr('on-click')
@@ -146,13 +146,14 @@ class SelectedModelController(BaseController):
                 render(model, node, template)
 
         self.node = jq('#'+self.name+' .template')
+        self.node.removeClass('template')
         for n in self.node.find('[r]'):
             n_ = jq(n)
             on_click = n_.attr('on-click')
             if on_click:
                 method = lambda: getattr(self.selected, on_click)
                 n_.click(method)
-            reactive(f,self, n_, n_.outerHTML())
+            reactive(f, self, n_, n_.outerHTML())
 
     @property
     def touch(self):

@@ -49,7 +49,7 @@ def test_1():
     assert call('class', 'hola') in node1.attr.mock_calls
 
     assert call('9') in node2.html.mock_calls
-    assert model._dirty == set(['selected', 'x', 'y'])
+    assert model._dirty == set(['x', 'y'])
 
     model.x = 800
     #assert len(execute) == 1

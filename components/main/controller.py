@@ -1,9 +1,9 @@
 import browser
 window = browser.window
-jq = window.jq # jQuery.noConflict(True)
+jq = window.jq
 
 from components.lib.filter_mongo import pass_filter
-from components.main.reactive import reactive, get_current_call, execute, map_, consume, add_to_map
+from components.main.reactive import reactive, get_current_call, execute, consume, add_to_map, get_do_consume
 import re
 import json
 from components.main.filter_ import filters
@@ -144,9 +144,6 @@ class SelectedModelController(BaseController):
         if current_call is not None:
             self._dep.append({'call': current_call, 'attr': 'touch'})
             add_to_map(self)
-            #r = map_.get(current_call, [])
-            #r.append(self)
-            #map_[current_call] = r
         return self._touch
 
     @touch.setter
@@ -156,7 +153,8 @@ class SelectedModelController(BaseController):
             for item in self._dep:
                 if item['attr'] == 'touch' and item['call'] not in execute:
                     execute.append(item['call'])
-            consume()
+            if get_do_consume():
+                consume()
 
     def reset(self, func):
         print('reset', func)

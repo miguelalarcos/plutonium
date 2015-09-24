@@ -1,8 +1,22 @@
 import random
 import json
-print('R(1)')
 from components.lib.epochdate import datetimeargs2epoch
-print('R(2)')
+from contextlib import contextmanager
+
+do_consume = True
+
+
+def get_do_consume():
+    return do_consume
+
+
+@contextmanager
+def execute_block():
+    global do_consume
+    do_consume = False
+    yield
+    do_consume = True
+    consume()
 
 registered_models = {}
 current_call = None
@@ -107,16 +121,17 @@ class Model(object):
 
         if '_'+key not in self.__dict__.keys():
             self.__dict__['_'+key] = value
-            if dirty:
+            if dirty and key != 'selected':
                 self._dirty.add(key)
             return
 
         if value != self.__dict__['_'+key]:
             self.__dict__['_'+key] = value
-            if dirty:
+            if dirty and key != 'selected':
                 self._dirty.add(key)
 
             for item in self._dep:
                 if item['attr'] == key and item['call'] not in execute:
                     execute.append(item['call'])
-            consume()
+            if do_consume:
+                consume()

@@ -4,8 +4,8 @@ import javascript
 from components.lib.epochdate import epochargs2datetime
 
 import json
-from components.main.reactive import consume, Model, registered_models
-from components.main.controller import Controller
+from components.main.reactive import consume, Model, registered_models, execute_block
+from components.main.controller import BaseController
 
 WebSocket = javascript.JSConstructor(window.WebSocket)
 
@@ -22,11 +22,11 @@ def on_message(evt):
         try:
             model = klass.objects[data['id']]
             print('encontrado')
-            for k, v in data.items():
-                if k in ('id', '__deleted__'):
-                    continue
-                print ('set model.id', data['id'], k, v)
-                setattr(model, '_'+k, v)
+            with execute_block():
+                for k, v in data.items():
+                    if k in ('id', '__deleted__'):
+                        continue
+                    setattr(model, '_'+k, v)
         except KeyError:
             print('nuevo')
             data_ = {}
@@ -38,7 +38,7 @@ def on_message(evt):
             model = klass(**data_)
 
         print('test all controllers')
-        for c in Controller.controllers.values():
+        for c in BaseController.controllers.values():
             print('c.test(model, data):', c, model, data)
             c.test(model, data)
         #if all([c.test(model, data) for c in Controller.controllers.values()]):
@@ -55,6 +55,6 @@ def init():
     print('iniciando socket')
     ws = WebSocket("ws://127.0.0.1:8888/ws")
     Model.ws = ws
-    Controller.ws = ws
+    BaseController.ws = ws
 
     ws.bind('message', on_message)

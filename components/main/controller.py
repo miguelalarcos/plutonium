@@ -50,6 +50,22 @@ def makeDIV(id, model, func, template, controller=None):
 class BaseController(object):
     controllers = {}
 
+    @classmethod
+    def subscribe_all(cls):
+        for c in cls.controllers.values():
+            c.subscribe()
+
+    def subscribe(self, filter=None):
+        if filter is None:
+            print('sending filter', json.dumps(self.filter_json))
+            self.ws.send(json.dumps(self.filter_json))
+        else:
+            name, kw = filter
+            self.filter = filters[name](**kw)
+            filter = {'__stop__': self.filter_json}
+            self.filter_json = {'__filter__': name}.update(kw)
+            self.ws.send(json.dumps(filter.update(self.filter_json)))
+
     def indexById(self, id):
         index = 0
         for item in self.models:
@@ -216,6 +232,7 @@ class Controller(BaseController):
         self.func = render
         BaseController.controllers[self.name] = self
 
+    """
     @classmethod
     def subscribe_all(cls):
         for c in cls.controllers.values():
@@ -231,6 +248,7 @@ class Controller(BaseController):
             filter = {'__stop__': self.filter_json}
             self.filter_json = {'__filter__': name}.update(kw)
             self.ws.send(json.dumps(filter.update(self.filter_json)))
+    """
 
     def pass_filter(self, raw):
         return pass_filter(self.filter, raw)

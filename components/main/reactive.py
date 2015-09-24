@@ -14,9 +14,11 @@ def get_do_consume():
 def execute_block():
     global do_consume
     do_consume = False
-    yield
-    do_consume = True
-    consume()
+    try:
+        yield
+    finally:
+        do_consume = True
+        consume()
 
 registered_models = {}
 current_call = None
@@ -27,7 +29,7 @@ def get_current_call():
     return current_call
 
 execute = []
-map_ = {} # function to list of objects to reset
+map_ = {} # helper reative function to list of objects to reset
 
 
 def add_to_map(obj):
@@ -75,10 +77,18 @@ class Model(object):
         self.__dict__['_dirty'] = set()
         self.__dict__['id'] = id
         self.__dict__['__collection__'] = self.__class__.__name__
-        for k,v in kw.items():
-            if k in ('__deleted__', '__collection__'):
-                continue
-            setattr(self, k, v)
+
+        def set_values():
+            for k, v in kw.items():
+                if k in ('__deleted__', '__collection__'):
+                    continue
+                setattr(self, k, v)
+
+        if do_consume:
+            with execute_block():
+                set_values()
+        else:
+            set_values()
 
         self.__class__.objects[id] = self
         self.selected = False

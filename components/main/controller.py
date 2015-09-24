@@ -145,8 +145,8 @@ class SelectedModelController(BaseController):
             if model:
                 render(model, node, template)
 
-        self.node = jq('#'+self.name+' .template')
-        self.node.removeClass('template')
+        self.node = jq('#'+self.name)
+
         for n in self.node.find('[r]'):
             n_ = jq(n)
             on_click = n_.attr('on-click')
@@ -228,28 +228,11 @@ class Controller(BaseController):
         self.filter_json = {'__filter__': name}
         self.filter_json.update(kw)
         self.filter = filters[name](**kw)
-        self.node = jq("[each='"+self.name+"']")
+        #self.node = jq("[each='"+self.name+"']")
+        self.node = jq('#'+self.name)
         self.node.id = self.node.attr('id')
         self.func = render
         BaseController.controllers[self.name] = self
-
-    """
-    @classmethod
-    def subscribe_all(cls):
-        for c in cls.controllers.values():
-            c.subscribe()
-
-    def subscribe(self, filter=None):
-        if filter is None:
-            print('sending filter', json.dumps(self.filter_json))
-            self.ws.send(json.dumps(self.filter_json))
-        else:
-            name, kw = filter
-            self.filter = filters[name](**kw)
-            filter = {'__stop__': self.filter_json}
-            self.filter_json = {'__filter__': name}.update(kw)
-            self.ws.send(json.dumps(filter.update(self.filter_json)))
-    """
 
     def pass_filter(self, raw):
         return pass_filter(self.filter, raw)

@@ -13,18 +13,18 @@ from components.main.init import init
 
 init()
 
-from components.main.controller import Controller, SelectedModelController
+from components.main.controller import Controller, SelectedModelController, BaseController
 from components.main.filters import my_filter
 
 key = [('x', 'desc')]
 filter = ('my_filter', {'x': 5, 'y': 10})
-Controller('MyController', key, filter)
+Controller('container', key, filter)
 
 
 def select_func(models):
     if len(models) > 0:
         return models[0]
-    return A(x=0)
+    return A(x='')
 
 SelectedModelController('first', key, filter, select_func)
 
@@ -35,8 +35,7 @@ sent_initial_data = False
 def send_data():
     global sent_initial_data
     if not sent_initial_data:
-        #Controller('MyController', key, filter)
-        Controller.subscribe_all()
+        BaseController.subscribe_all()
         sent_initial_data = True
     try:
         if random.random() < 0.5:

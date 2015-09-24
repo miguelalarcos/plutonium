@@ -144,7 +144,7 @@ def broadcast(collection, new, model_before, deleted, model):
                     last_doc = docs[-1]
                     pos = index_by_id(docs, model_before['id'])
                     position_after = pos
-                    if pos is not None:
+                    if pos is not None and pos < filt.limit:
                         del docs[pos]
                     pos = index_in_list(docs, filt.key, model_before)
                     if pos >= filt.limit:
@@ -171,14 +171,16 @@ def broadcast(collection, new, model_before, deleted, model):
                     after = filt.pass_filter(model_after)
                 print('after:', after)
                 if after:
-                    print('send', client.socket, model)
+                    print('send(1)', client.socket, model)
                     yield q_send.put((client.socket, model))
                     break_flag = True
             else:
-                print('send', client.socket, model)
+                print('send(2)', client.socket, model)
                 yield q_send.put((client.socket, model))
                 break_flag = True
-            if before and filt.limit and position_after > filt.limit and last_doc and last_doc['_id'] != model['_id']:
+
+            if before and filt.limit and position_after >= filt.limit and last_doc and last_doc['id'] != model['id']:
+                print('send(3)', client.socket, last_doc)
                 yield q_send.put((client.socket, last_doc))
             if break_flag:
                 break

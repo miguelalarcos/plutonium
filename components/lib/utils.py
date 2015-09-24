@@ -1,10 +1,14 @@
 def index_by_id(models, id):
-    index = -1
+    print('index by id: ', models, id)
+    index = None
     for item in models:
         print(item)
-        if item['_id'] == id:
-            index += 1
+        if item['id'] == id:
+            if index is None:
+                index = 0
             break
+        if index is None:
+            index = 0
         index += 1
     return index
 

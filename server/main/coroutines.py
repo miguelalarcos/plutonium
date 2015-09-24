@@ -127,6 +127,7 @@ def handle_collection(item):
 
 @gen.coroutine
 def broadcast(collection, new, model_before, deleted, model):
+    print('len: ', len(Client.clients))
     for client in Client.clients.values():
         print('filter of client:', client.filters)
         for filt in client.filters.values():
@@ -166,7 +167,7 @@ def broadcast(collection, new, model_before, deleted, model):
                     model_after.update(model)
 
                 if filt.limit:
-                    after = position_after <= filt.limit # and filt.pass_filter(model_after)
+                    after = position_after < filt.limit # and filt.pass_filter(model_after)
                 else:
                     after = filt.pass_filter(model_after)
                 print('after:', after)
@@ -183,6 +184,7 @@ def broadcast(collection, new, model_before, deleted, model):
                 print('send(3)', client.socket, last_doc)
                 yield q_send.put((client.socket, last_doc))
             if break_flag:
+                print('             break')
                 break
 
 @gen.coroutine

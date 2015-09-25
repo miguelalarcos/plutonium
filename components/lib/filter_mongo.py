@@ -7,6 +7,7 @@ class Filter(object):
         self.key = item.pop('__key__', None)
         self.limit = item.pop('__limit__', None)
         self.collection = item.pop('__collection__')
+        self.skip = item.pop('__skip__', 0)
         self.filter = filters[self.name](**item)
 
     def pass_filter(self, model):

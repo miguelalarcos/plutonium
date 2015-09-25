@@ -4,11 +4,13 @@ from mock import Mock, MagicMock, call
 import pytest
 from tornado import gen
 from server.main import coroutines
+from server.main.client import Client
 from components.main.models import A
+import components.main.filters.my_filter
 
 handle = coroutines.handle_collection
-#db = MagicMock()
-#coroutines.db = db
+handle2 = coroutines.handle_collection2
+client = Client(Mock())
 
 
 @pytest.fixture(scope="module")
@@ -17,9 +19,45 @@ def set_db():
     coroutines.db = db
     return db
 
+@pytest.mark.gen_test
+def test_update_collection2(set_db):
+    db = set_db
+    item = {'__client__': None, '__collection__':'A', 'id': '0', 'x': 6}
+    client.filters = {}
+    client.add_filter('my_filter', {'__collection__': 'A', '__filter__': 'my_filter',
+                                    'x': 5, 'y': 10, '__key__': [('x', -1), ], '__limit__': 2,
+                                    '__skip__': 0})
+
+    to_list = Mock()
+    @gen.coroutine
+    def f():
+        to_list()
+        return []
+
+    find_one = Mock()
+    @gen.coroutine
+    def g(arg):
+        find_one(arg)
+        return {}
+
+    update = Mock()
+    @gen.coroutine
+    def h(id, arg):
+        update(id, arg)
+        return
+
+    db['A'].find_one = g
+    db['A'].find().to_list = f
+    db['A'].update = h
+
+    yield handle2(item)
+    assert find_one.called
+    assert to_list.called
+
+# ################################
 
 @pytest.mark.gen_test
-def test_update(set_db):
+def _test_update(set_db):
     db = set_db
     #db = MagicMock()
     #coroutines.db = db
@@ -44,7 +82,7 @@ def test_update(set_db):
 
 
 @pytest.mark.gen_test
-def test_updateno_pass_validation(set_db):
+def _test_updateno_pass_validation(set_db):
     db = set_db
     item = {'__client__': None, '__collection__':'A', 'id': '0', 'x': -1}
 
@@ -66,7 +104,7 @@ def test_updateno_pass_validation(set_db):
 
 
 @pytest.mark.gen_test
-def test_insert(set_db):
+def _test_insert(set_db):
     db = set_db
     item = {'__client__': None, '__collection__':'A', 'id': '0', 'x': 6}
 
@@ -90,7 +128,7 @@ def test_insert(set_db):
 
 
 @pytest.mark.gen_test
-def test_insert_no_pass_validation(set_db):
+def _test_insert_no_pass_validation(set_db):
     db = set_db
     item = {'__client__': None, '__collection__':'A', 'id': '0', 'x': -6}
 

@@ -32,19 +32,28 @@ def sender():
 
 
 @gen.coroutine
-def do_find(filt):
-    cursor = db[filt.collection].find(filt.filter)
+def do_find(filt, projection=None): #
+    if projection:
+        cursor = db[filt.collection].find(filt.filter, projection)
+    else:
+        cursor = db[filt.collection].find(filt.filter)
     if filt.key:
         cursor.sort(filt.key)
+    cursor.skip(filt.skip)
     if filt.limit:
         cursor.limit(filt.limit)
-    ret = []
-    while (yield cursor.fetch_next):
-        document = cursor.next_object()
+    #ret = []
+    ret = yield cursor.to_list()
+    for document in ret:
         document['__collection__'] = filt.collection
         document['id'] = document['_id']
         del document['_id']
-        ret.append(document)
+    #while (yield cursor.fetch_next):
+    #    document = cursor.next_object()
+    #    document['__collection__'] = filt.collection
+    #    document['id'] = document['_id']
+    #    del document['_id']
+    #    ret.append(document)
     return ret
 
 
@@ -68,6 +77,64 @@ def handle_rpc(item):
     name = item.pop('__RPC__')
     task = registered_tasks[name]
     ioloop.IOLoop.current().spawn_callback(task, db=DB(db), queue=q_mongo, **item)
+
+
+@gen.coroutine
+def handle_collection2(item):
+    collection = item['__collection__']
+    del item['__client__']
+    for client in Client.clients.values():
+        for filt in client.filters.values():
+            ret = yield do_find(filt, {'_id': 1})
+            filt.before = ret
+    model_before = yield db[collection].find_one({'_id': item['id']})
+    if model_before is None:
+        model_id = item.copy()
+        model_id['_id'] = model_id['id']
+        del model_id['id']
+        del model_id['__collection__']
+
+        if validate(item):
+            yield db[collection].insert(model_id)
+        else:
+            return
+    elif '__deleted__' in item.keys():
+        yield db[collection].remove({'_id': item['id']})
+    else:
+        model_copy = item.copy()
+        del model_copy['id']
+        del model_copy['__collection__']
+        model2validate = model_before.copy()
+        model2validate.update(item)
+        if validate(model2validate):
+            yield db[collection].update({'_id': item['id']}, {"$set": model_copy})
+        else:
+            return
+    yield broadcast2(item)
+
+
+@gen.coroutine
+def broadcast2(item):
+    collection = item['__collection__']
+    for client in Client.clients.values():
+        to_send = set()
+        for filt in client.filters.values():
+            if item['id'] in filt.before:
+                to_send.add(item)
+            after = yield do_find(filt, {'_id': 1})
+            tupla = []
+            if len(after) == 1:
+                tupla = (0, )
+            elif len(after) > 1:
+                tupla = (0, -1)
+            for index in tupla:
+                id = after[index]['_id']
+                if id not in filt.before:
+                    doc = yield db[collection].find_one({'_id': id})
+                    to_send.add(doc)
+        for doc in to_send:
+            yield q_send.put((client.socket, doc))
+
 
 
 @gen.coroutine

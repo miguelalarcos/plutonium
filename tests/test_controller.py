@@ -200,17 +200,16 @@ def test_SelectedModelControllerRef():
     node2.html.return_value = '{y}'
 
     def side_effect(arg):
-        if arg == '#cr':
-            return node
+        if type(arg) is Mock:
+            return arg
         if type(arg) is str:
             return node
         return arg
 
 
     m = A(id=None, x=8, y=9)
-    jq.side_effect = [node, node1, node2]
-    c = controller.Controller('c', key=[('x', 'desc'), ('y', 'desc')], filter=('0', {'x': 0, 'y': 1000}))
     jq.side_effect = side_effect
+    c = controller.Controller('c', key=[('x', 'desc'), ('y', 'desc')], filter=('0', {'x': 0, 'y': 1000}))
     cr = controller.SelectedModelControllerRef('cr', c)
 
     c.test(m, {'x': 8, 'y': 9})
@@ -222,14 +221,14 @@ def test_SelectedModelControllerRef():
     c.test(m2, {'x': 801, 'y': 19})
     m.selected = False
     m2.selected = True
-    #consume()
+
     assert cr.selected == m2
 
     m3 = A(id=None, x=1, y=1)
     c.test(m3, {'x': 1, 'y': 1})
     m2.selected = False
     m3.selected = True
-    #consume()
+
     assert cr.selected == m3
     m3.x = -1
     c.test(m3, {'x': -1, 'y': 1})

@@ -28,7 +28,7 @@ def render(model, node, template): # ver si puedo quitar el argumento template y
 
 
 def makeDIV(id, model, func, template, controller=None):
-
+    print('template', template)
     #node = jq("<div reactive_id='"+str(id)+"'>test</div>")
     #node.html(template)
     node = jq(template)  # ojo el template original debe llevar reactive_id='{id}'
@@ -126,7 +126,41 @@ class BaseController(object):
             return (index, 'after', self.models[index-1].id)
 
 
-class SelectedModelController(BaseController):
+class SelectedModelControllerRef(BaseController):
+    def __init__(self, name, ref, selection_func=None):
+        self.name = name
+        self.ref = ref
+        self.selected = None
+
+        def fselected(lista):
+            s = None
+            for m_ in lista:
+                if m_.selected:
+                    s = m_
+            return s
+
+        self.selection_func = selection_func or fselected
+
+        def f(controller, node, template):
+            print('llego')
+            controller.touch
+            model = self.selection_func(controller.models)
+            self.selected = model
+
+            if model:
+                render(model, node, template)
+
+        self.node = jq('#'+self.name)
+        for n in self.node.find('[r]'):
+            n_ = jq(n)
+            on_click = n_.attr('on-click')
+            if on_click:
+                method = lambda: getattr(self.selected, on_click)
+                n_.click(method)
+            reactive(f, self.ref, n_, n_.outerHTML())
+
+
+class _SelectedModelController(BaseController):
     def __init__(self, name, key, filter_, selection_func):
         self.name = name
         self.key = key
@@ -236,7 +270,38 @@ class Controller(BaseController):
         self.node = jq('#'+self.name)
         self.node.id = self.node.attr('id')
         self.func = render
+        self._dep = []
+        self._touch = 0
         BaseController.controllers[self.name] = self
+
+    @property
+    def touch(self):
+        current_call = get_current_call()
+        if current_call is not None:
+            self._dep.append({'call': current_call, 'attr': 'touch'})
+            add_to_map(self)
+        return self._touch
+
+    @touch.setter
+    def touch(self, model):
+        print('touch setter', self._touch, model)
+        if self._touch != model:
+            self._touch = model
+            for item in self._dep:
+                if item['attr'] == 'touch' and item['call'] not in execute:
+                    execute.append(item['call'])
+            print('llego4')
+            if get_do_consume():
+                print('execute', execute)
+                consume()
+
+    def reset(self, func):
+        print('reset', func)
+        ret = []
+        for item in self._dep:
+            if item['call'] != func:
+                ret.append(item)
+        self._dep = ret
 
     def pass_filter(self, raw):
         return pass_filter(self.filter, raw)
@@ -251,16 +316,19 @@ class Controller(BaseController):
             if pass_filter(self.filter, raw):
                 print('y permance dentro', 'MODIFY')
                 self.modify(model)
+                self.touch += 1
                 return False
             else:
                 print('y sale', 'OUT')
                 self.out(model)
+                self.touch += 1
                 return True
         else:
             print('esta fuera')
             if pass_filter(self.filter, raw):
                 print('y entra', 'NEW')
                 self.new(model)
+                self.touch += 1
                 return False
             else:
                 print('y permanece fuera')

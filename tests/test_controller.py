@@ -6,6 +6,7 @@ sys.modules['browser'] = Mock()
 from components.main import controller
 from components.main.controller import Controller
 from components.main.reactive import Model
+from collections import namedtuple
 
 
 class DIV(object):
@@ -178,3 +179,59 @@ def test_modify_when_move_to__before():
     assert call("[reactive_id='2']") == children.mock_calls[2]
     assert children().before.called
     assert controller_.models == [m2, m]
+
+# ####################
+
+
+def test_SelectedModelControllerRef():
+    node = MagicMock()
+    node1 = MagicMock()
+    Attribute = namedtuple('Attribute', ['name', 'value'])
+    node1[0].attributes = [Attribute('class', '{x}')]
+    node2 = MagicMock()
+    node2[0].attributes = []
+    jq = MagicMock()
+    controller.jq = jq
+
+    node.find().__iter__.return_value = [node1, node2]
+    node1.outerHTML.return_value = '<span r class="{x}">{x}</span>'
+    node1.html.return_value = '{x}'
+    node2.outerHTML.return_value = '<span r>{y}</span>'
+    node2.html.return_value = '{y}'
+
+    def side_effect(arg):
+        if arg == '#cr':
+            return node
+        if type(arg) is str:
+            return node
+        return arg
+
+
+    m = A(id=None, x=8, y=9)
+    jq.side_effect = [node, node1, node2]
+    c = controller.Controller('c', key=[('x', 'desc'), ('y', 'desc')], filter=('0', {'x': 0, 'y': 1000}))
+    jq.side_effect = side_effect
+    cr = controller.SelectedModelControllerRef('cr', c)
+
+    c.test(m, {'x': 8, 'y': 9})
+    assert cr.selected is None
+    m.selected = True
+    assert cr.selected == m
+
+    m2 = A(id=None, x=801, y=19)
+    c.test(m2, {'x': 801, 'y': 19})
+    m.selected = False
+    m2.selected = True
+    #consume()
+    assert cr.selected == m2
+
+    m3 = A(id=None, x=1, y=1)
+    c.test(m3, {'x': 1, 'y': 1})
+    m2.selected = False
+    m3.selected = True
+    #consume()
+    assert cr.selected == m3
+    m3.x = -1
+    c.test(m3, {'x': -1, 'y': 1})
+    assert cr.selected is None
+

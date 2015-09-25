@@ -55,20 +55,7 @@ def handle_filter(item):
 
     name = item.pop('__filter__')
     filt = client.add_filter(name, item)
-    #collection = filt.collection   # pop('__collection__')
 
-    #cursor = db[collection].find(filt.filter)
-    #if filt.key:
-    #    cursor.sort(filt.key)
-    #if filt.limit:
-    #    cursor.limit(filt.limit)
-    #ret = []
-    #while (yield cursor.fetch_next):
-    #    document = cursor.next_object()
-    #    document['__collection__'] = collection
-    #    document['id'] = document['_id']
-    #    del document['_id']
-    #    ret.append(document)
     ret = yield do_find(filt)
     if len(ret) > 0:
         ret = [(client.socket, r) for r in ret]

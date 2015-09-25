@@ -38,7 +38,7 @@ class Filter(object):
                             return False
         return True
 
-"""
+
 def pass_filter(filter, model):
     print('model en pass_filter', model)
     if '__deleted__' in model.keys():
@@ -67,4 +67,4 @@ def pass_filter(filter, model):
                     if v > val:
                         return False
     return True
-"""
+

@@ -1,9 +1,11 @@
 def index_by_id(models, id):
-    print('index by id: ', models, id)
     index = None
     for item in models:
-        print(item)
-        if item['id'] == id:
+        if item.__getitem__:
+            v = item['id']
+        else:
+            v = getattr(item, 'id')
+        if v == id:
             if index is None:
                 index = 0
             break
@@ -18,8 +20,12 @@ def compare(a, b, key, order=1):
         order = 1
     if order == 'desc':
         order = -1
-    v_a = a[key]
-    v_b = b[key]
+    if a.__getitem__:
+        v_a = a[key]
+        v_b = b[key]
+    else:
+        v_a = getattr(a, key)
+        v_b = getattr(b, key)
     if v_a == v_b:
         return 0
     if v_a > v_b:

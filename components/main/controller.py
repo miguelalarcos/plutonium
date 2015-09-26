@@ -9,9 +9,55 @@ import json
 from components.lib.filter_mongo import filters
 
 
+def render_ex(node, model):
+    print('render ex:', node.html())
+
+    def func(n, m, template):
+        #print('func', n, n.html(), n.outerHTML(), template)
+        dct = {}
+        attrs = re.findall('\{[a-zA-Z_09]+\}', template) #n.outerHTML())
+        for attr in attrs:
+            attr = attr[1:-1]
+            v = getattr(m, attr)
+            if callable(v):
+                v = v()
+            print(v)
+            dct[attr] = v
+
+        n.html(template.format(**dct))
+        for item in n[0].attributes:
+            n.attr(item.name, item.value.format(**dct))
+        print('***render', n.html())
+
+    def func2(n, m, children):
+        print('func2', n.html(), children)
+        v = True
+        if n.attr('if'):
+            attr = n.attr('if')[1:-1]
+            v = getattr(m, attr)
+            print(v)
+            if callable(v):
+                v = v()
+        if v:
+            #if not n.children():
+            #    n.append(children)
+                if not children:
+                    if n.attr('r') or n.attr('r') == '':
+                        reactive(func, n, m, n.outerHTML())
+                else:
+                    for ch in children:
+                        render_ex(ch, m)
+        else:
+            n.children().remove()
+
+    if node.attr('if'):
+        print('if true')
+        reactive(func2, node, model, node.children())
+    else:
+        func2(node, model, node.children())
+
+
 def render(model, node, template): # ver si puedo quitar el argumento template y sustituirlo por node.outerHTML
-    print('*** render', model, node, template)
-    print('**** render', model.__dict__)
     dct = {}
     attrs = re.findall('\{[a-zA-Z_09]+\}', template)
     for attr in attrs:
@@ -37,10 +83,10 @@ def makeDIV(id, model, func, template, controller=None):
         n_ = jq(n)
         on_click = n_.attr('on-click')
         if on_click:
-            try:
+            if hasattr(model, on_click):
                 method = getattr(model, on_click)
                 n_.click(method)
-            except AttributeError:
+            else:
                 method = getattr(controller, on_click)
                 n_.click(lambda: method(model))
         reactive(func, model, n_, n_.outerHTML())
@@ -142,7 +188,6 @@ class SelectedModelControllerRef(BaseController):
         self.selection_func = selection_func or fselected
 
         def f(controller, node, template):
-            print('llego')
             controller.touch
             model = self.selection_func(controller.models)
             self.selected = model
@@ -195,15 +240,12 @@ class Controller(BaseController):
 
     @touch.setter
     def touch(self, model):
-        print('touch setter', self._touch, model)
         if self._touch != model:
             self._touch = model
             for item in self._dep:
                 if item['attr'] == 'touch' and item['call'] not in execute:
                     execute.append(item['call'])
-            print('llego4')
             if get_do_consume():
-                print('execute', execute)
                 consume()
 
     def reset(self, func):
@@ -215,7 +257,6 @@ class Controller(BaseController):
         self._dep = ret
 
     def pass_filter(self, raw):
-        #return pass_filter(self.filter, raw)
         return self.filter_object.pass_filter(raw)
 
     def test_filter(self, ini):

@@ -17,7 +17,7 @@ def h(model):
     ret = (model.x, model.y)
 
 
-def test_1():
+def test_basic_reactive():
     m = A(id='0', x=0)
 
     m.y = 3
@@ -28,8 +28,7 @@ def test_1():
     m.x = 8
     m.y = 9
 
-    #assert len(execute) == 1
-    #consume()
+    assert len(execute) == 0
 
     assert ret == (8, 9)
     assert len(m._dep) == 2
@@ -41,19 +40,6 @@ def test_1():
     m._dirty = set()
     m._x = 900
     assert m._dirty == set()
-
-
-def test_basic_reactive():
-    m = A(id='0', x=0, y=0)
-    ret = None
-
-    def rf():
-        nonlocal ret
-        ret = m.x, m.y
-    reactive(rf)
-    m.y = 8
-
-    assert ret == (0, 8)
 
 
 def test_context_manager():

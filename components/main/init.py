@@ -17,6 +17,9 @@ def on_message(evt):
         data = json.loads(result)
         data = epochargs2datetime(data)
         collection = data.pop('__collection__')
+        filter_name = data.pop('__filter__')
+        raw = data.copy()
+        data.pop('__skip__')
         klass = registered_models[collection]
         print('buscamos si ya tenemos el objeto con id', data['id'])
         try:
@@ -40,12 +43,10 @@ def on_message(evt):
         print('test all controllers')
         r = []
         for c in BaseController.controllers.values():
-            r.append(c.test(model, data))
+            if c.filter_full_name == filter_name:
+                r.append(c.test(model, raw))
         if all(r):
             del klass.objects[model.id]
-
-        #print('consume')
-        #consume()
     except Exception as e:
         print ('******************** error', e)
 

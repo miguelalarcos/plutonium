@@ -96,11 +96,11 @@ def test_render_model_selection():
     m = A(id=None, x=8, y=9)
 
     filter = Filter({'__collection__': 'A', '__filter__': 'my_filter',
-                                    'x': 0, 'y': 1000, '__key__': [('x', -1), ], '__limit__': 2,
+                                    'x': 0, 'y': 1000, '__key__': [('x', 'desc'), ('y', 'desc')], '__limit__': 2,
                                     '__skip__': 0})
 
     jq.side_effect = [node, node1, node2]
-    cc = controller.Controller('cc', key=[('x', 'desc'), ('y', 'desc')], filter=filter)
+    cc = controller.Controller('cc', filter=filter)
     jq.side_effect = side_effect
     c = controller.SelectedModelControllerRef('c', cc, selection)
 
@@ -172,11 +172,11 @@ def test_render_model_selection_selected():
         return arg
 
     filter = Filter({'__collection__': 'A', '__filter__': 'my_filter',
-                                    'x': 0, 'y': 1000, '__key__': [('x', -1), ], '__limit__': 2,
+                                    'x': 0, 'y': 1000, '__key__': [('x', 'desc'), ('y', 'desc')], '__limit__': 2,
                                     '__skip__': 0})
 
     jq.side_effect = [node, node1, node2]
-    cc = controller.Controller('cc', key=[('x', 'desc'), ('y', 'desc')], filter=filter)
+    cc = controller.Controller('cc', filter=filter)
     jq.side_effect = side_effect
     c = controller.SelectedModelControllerRef('c', cc, selection_func=selection)
 

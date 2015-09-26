@@ -47,6 +47,7 @@ def do_find(filt, projection=None): #
     ret = yield cursor.to_list(length=filt.limit)
     for document in ret:
         document['__collection__'] = filt.collection
+        document['__filter__'] = filt.full_name
         document['id'] = document['_id']
         del document['_id']
     return ret

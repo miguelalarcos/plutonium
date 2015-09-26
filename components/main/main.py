@@ -10,15 +10,19 @@ import random
 print('Iniciando aplicación')
 from components.main.models.A import A
 from components.main.init import init
+from components.lib.filter_mongo import Filter
 
 init()
 
-from components.main.controller import Controller, SelectedModelController, BaseController
+from components.main.controller import Controller, SelectedModelControllerRef, BaseController
 from components.main.filters import my_filter
 
-key = [('x', 'desc')]
-filter = ('my_filter', {'x': 5, 'y': 10})
-Controller('container', key, filter)
+#key = [('x', 'desc')]
+#filter = ('my_filter', {'x': 5, 'y': 10})
+filt = Filter({'__collection__': 'A', '__filter__': 'my_filter',
+                                    'x': 5, 'y': 10, '__key__': [('x', -1), ], '__limit__': 2,
+                                    '__skip__': 0})
+c = Controller('container', filt)
 
 
 def select_func(models):
@@ -26,7 +30,7 @@ def select_func(models):
         return models[0]
     return A(x='')
 
-SelectedModelController('first', key, filter, select_func)
+smcr = SelectedModelControllerRef('first', c, select_func)
 
 button_send = jq('#button')
 sent_initial_data = False

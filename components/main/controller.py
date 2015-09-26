@@ -162,7 +162,7 @@ class SelectedModelControllerRef(BaseController):
 
 class Controller(BaseController):
 
-    def __init__(self, name, key, filter):
+    def __init__(self, name, filter):
         self.filter_object = filter
         self.limit = filter.limit
         self.filter_json = filter.raw_filter.copy()
@@ -171,7 +171,7 @@ class Controller(BaseController):
         self.filter_full_name = tuple([filter_name] + sorted(raw_filter.items()))
         self.name = name
         self.models = []
-        self.key = key
+        self.key = filter.key
         for attr in ('__key__', '__skip__', '__limit__', '__collection__'):
             if attr in raw_filter.keys():
                 del raw_filter[attr]
@@ -252,9 +252,9 @@ class Controller(BaseController):
             print('esta fuera')
             if pass_filter(self.filter, raw):
                 print('y entra', 'NEW')
-                self.new(model, raw['__skip__'])
+                self.new(model, raw.get('__skip__'))
                 self.touch += 1
-                #self.test_filter(raw['__skip__'])
+
                 return False
             else:
                 print('y permanece fuera')

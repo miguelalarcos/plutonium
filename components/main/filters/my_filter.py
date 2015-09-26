@@ -1,4 +1,4 @@
-from components.main.filter_ import filter
+from components.lib.filter_mongo import filter
 
 
 @filter('A')

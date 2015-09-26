@@ -7,10 +7,21 @@ from server.main import coroutines
 from server.main.client import Client
 from components.main.models import A
 import components.main.filters.my_filter
+from components.lib.filter_mongo import Filter
 
 handle = coroutines.handle_collection
-handle2 = coroutines.handle_collection2
-client = Client(Mock())
+
+socket = Mock()
+
+client = Client(socket)
+
+q_send = Mock()
+
+@gen.coroutine
+def fq(*args, **kw):
+    q_send(*args, **kw)
+    return
+coroutines.q_send.put = fq
 
 
 @pytest.fixture(scope="module")
@@ -19,26 +30,36 @@ def set_db():
     coroutines.db = db
     return db
 
+
 @pytest.mark.gen_test
-def test_update_collection2(set_db):
+def test_update_collection_in_and_in(set_db):
+    q_send.reset_mock()
     db = set_db
-    item = {'__client__': None, '__collection__':'A', 'id': '0', 'x': 6}
+    item = {'__client__': None, '__collection__':'A', 'id': '0', 'x': 8}
     client.filters = {}
-    client.add_filter('my_filter', {'__collection__': 'A', '__filter__': 'my_filter',
+    filt = Filter({'__collection__': 'A', '__filter__': 'my_filter',
                                     'x': 5, 'y': 10, '__key__': [('x', -1), ], '__limit__': 2,
                                     '__skip__': 0})
+    client.add_filter(filt)
+
+    filter_full_name = filt.full_name
+    ret = [[{'_id': '0'}, {'_id': '1'}], [{'_id': '0'}, {'_id': '1'}]]
 
     to_list = Mock()
     @gen.coroutine
     def f():
         to_list()
-        return []
+        return ret.pop(0)
 
     find_one = Mock()
     @gen.coroutine
     def g(arg):
         find_one(arg)
-        return {}
+        ret = {}
+        ret['0'] = {'_id': '0', 'x': 9}
+        ret['1'] = None
+        ret['2'] = {'_id': '2', 'x': 7}
+        return ret[arg['_id']]
 
     update = Mock()
     @gen.coroutine
@@ -50,100 +71,57 @@ def test_update_collection2(set_db):
     db['A'].find().to_list = f
     db['A'].update = h
 
-    yield handle2(item)
+    yield handle(item)
     assert find_one.called
     assert to_list.called
+    assert q_send.called
+    assert call((client.socket, {'__skip__': '0', '__filter__': filter_full_name, 'id': '0', 'x': 8, '__collection__': 'A'})) in q_send.mock_calls
+    assert len(q_send.mock_calls) == 1
 
-# ################################
 
 @pytest.mark.gen_test
-def _test_update(set_db):
+def test_update_collection_in_and_out(set_db):
+    q_send.reset_mock()
     db = set_db
-    #db = MagicMock()
-    #coroutines.db = db
     item = {'__client__': None, '__collection__':'A', 'id': '0', 'x': 6}
+    client.filters = {}
+    filt = Filter({'__collection__': 'A', '__filter__': 'my_filter',
+                                    'x': 5, 'y': 10, '__key__': [('x', -1), ], '__limit__': 2,
+                                    '__skip__': 0})
+    client.add_filter(filt)
 
+    ret = [[{'_id': '0'}, {'_id': '1'}], [{'_id': '1'}, {'_id': '2'}]]
+
+    to_list = Mock()
     @gen.coroutine
-    def f(arg):
-        return {'id': '0', 'x': 5}
+    def f():
+        to_list()
+        return ret.pop(0)
+
+    find_one = Mock()
+    @gen.coroutine
+    def g(arg):
+        find_one(arg)
+        ret = {}
+        ret['0'] = {'_id': '0', 'x': 9}
+        ret['1'] = None
+        ret['2'] = {'_id': '2', 'x': 7}
+        return ret[arg['_id']]
 
     update = Mock()
     @gen.coroutine
-    def u(id, arg):
+    def h(id, arg):
         update(id, arg)
         return
 
-    db['A'].find_one = f
-    db['A'].update = u
+    db['A'].find_one = g
+    db['A'].find().to_list = f
+    db['A'].update = h
 
     yield handle(item)
-    assert update.called
-    assert call({'_id': '0'}, {'$set': {'x': 6}}) in update.mock_calls
+    assert find_one.called
+    assert to_list.called
+    assert q_send.called
+    assert call((client.socket, {'__skip__': '1', '__filter__': filt.full_name, '__collection__': 'A', 'id': '2', 'x': 7})) in q_send.mock_calls
+    assert len(q_send.mock_calls) == 1
 
-
-@pytest.mark.gen_test
-def _test_updateno_pass_validation(set_db):
-    db = set_db
-    item = {'__client__': None, '__collection__':'A', 'id': '0', 'x': -1}
-
-    @gen.coroutine
-    def f(arg):
-        return {'id': '0', 'x': 5}
-
-    update = Mock()
-    @gen.coroutine
-    def u(id, arg):
-        update(id, arg)
-        return
-
-    db['A'].find_one = f
-    db['A'].update = u
-
-    yield handle(item)
-    assert not update.called
-
-
-@pytest.mark.gen_test
-def _test_insert(set_db):
-    db = set_db
-    item = {'__client__': None, '__collection__':'A', 'id': '0', 'x': 6}
-
-    @gen.coroutine
-    def f(arg):
-        return None
-
-    insert = Mock()
-    @gen.coroutine
-    def i(arg):
-        print('i')
-        insert(arg)
-        return
-
-    db['A'].find_one = f
-    db['A'].insert = i
-
-    yield handle(item)
-    assert insert.called
-    assert call({'_id': '0', 'x': 6}) in insert.mock_calls
-
-
-@pytest.mark.gen_test
-def _test_insert_no_pass_validation(set_db):
-    db = set_db
-    item = {'__client__': None, '__collection__':'A', 'id': '0', 'x': -6}
-
-    @gen.coroutine
-    def f(arg):
-        return None
-
-    insert = Mock()
-    @gen.coroutine
-    def i(arg):
-        insert(arg)
-        return
-
-    db['A'].find_one = f
-    db['A'].insert = i
-
-    yield handle(item)
-    assert not insert.called

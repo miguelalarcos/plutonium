@@ -7,6 +7,7 @@ from components.main import controller
 from components.main.controller import Controller
 from components.main.reactive import Model
 from collections import namedtuple
+from components.lib.filter_mongo import Filter, filter, filters
 
 
 class DIV(object):
@@ -20,12 +21,17 @@ class A(Model):
     def __init__(self, id, **kw):
         super(A, self).__init__(id, **kw)
 
-filters = {}
+#filters = {}
 controller.filters = filters
-filters['0'] = lambda x, y: {'__collection__': 'A', 'x': {"$gt": x, "$lt": y}}
+#filters['0'] = lambda x, y: {'__collection__': 'A', 'x': {"$gt": x, "$lt": y}}
 
-#filter = filters['0'](x=5, y=10)
-filter = ('0', {'x': 5, 'y': 10})
+@filter('A')
+def my_filter(x, y):
+    return {'x': {"$gt": x, "$lt": y}}
+
+filter = Filter({'__collection__': 'A', '__filter__': 'my_filter',
+                                    'x': 5, 'y': 10, '__key__': [('x', -1), ], '__limit__': 2,
+                                    '__skip__': 0})
 m0 = A(id='0', x=0, y=3)
 m1 = A(id='1', x=0, y=2)
 m = A(id='2', x=0, y=1)
@@ -77,7 +83,7 @@ def test_new_append():
     controller.jq = jq
     controller_ = Controller(name='', key=[('x', 'desc'), ('y', 'desc')], filter=filter)
     m = A(id='2', x=0, y=3)
-    controller_.new(m)
+    controller_.new(m, 0)
     assert append.called
     assert controller_.models == [m]
 
@@ -92,7 +98,7 @@ def test_new__before():
     m = A(id='2', x=0, y=3)
     controller_.models = [m]
     m2 = A(id='3', x=0, y=3)
-    controller_.new(m2)
+    controller_.new(m2, 0)
 
     jq().children.assert_called_with("[reactive_id='2']")
     assert before.called
@@ -109,7 +115,7 @@ def test_new__after():
     m = A(id='2', x=0, y=3)
     controller_.models = [m]
     m2 = A(id='3', x=0, y=2)
-    controller_.new(m2)
+    controller_.new(m2, 0)
 
     jq().children.assert_called_with("[reactive_id='2']")
     assert after.called
@@ -209,28 +215,33 @@ def test_SelectedModelControllerRef():
 
     m = A(id=None, x=8, y=9)
     jq.side_effect = side_effect
-    c = controller.Controller('c', key=[('x', 'desc'), ('y', 'desc')], filter=('0', {'x': 0, 'y': 1000}))
+
+    filter = Filter({'__collection__': 'A', '__filter__': 'my_filter',
+                                    'x': 0, 'y': 1000, '__key__': [('x', -1), ], '__limit__': 2,
+                                    '__skip__': 0})
+
+    c = controller.Controller('c', key=[('x', 'desc'), ('y', 'desc')], filter=filter)
     cr = controller.SelectedModelControllerRef('cr', c)
 
-    c.test(m, {'x': 8, 'y': 9})
+    c.test(m, {'x': 8, 'y': 9, '__skip__': '0'})
     assert cr.selected is None
     m.selected = True
     assert cr.selected == m
 
     m2 = A(id=None, x=801, y=19)
-    c.test(m2, {'x': 801, 'y': 19})
+    c.test(m2, {'x': 801, 'y': 19, '__skip__': '0'})
     m.selected = False
     m2.selected = True
 
     assert cr.selected == m2
 
     m3 = A(id=None, x=1, y=1)
-    c.test(m3, {'x': 1, 'y': 1})
+    c.test(m3, {'x': 1, 'y': 1, '__skip__': '0'})
     m2.selected = False
     m3.selected = True
 
     assert cr.selected == m3
     m3.x = -1
-    c.test(m3, {'x': -1, 'y': 1})
+    c.test(m3, {'x': -1, 'y': 1, '__skip__': '0'})
     assert cr.selected is None
 

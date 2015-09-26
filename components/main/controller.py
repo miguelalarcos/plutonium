@@ -2,7 +2,7 @@ import browser
 window = browser.window
 jq = window.jq
 
-from components.lib.filter_mongo import pass_filter
+from components.lib.filter_mongo import pass_filter, Filter
 from components.main.reactive import reactive, get_current_call, execute, consume, add_to_map, get_do_consume
 import re
 import json
@@ -160,113 +160,23 @@ class SelectedModelControllerRef(BaseController):
             reactive(f, self.ref, n_, n_.outerHTML())
 
 
-class _SelectedModelController(BaseController):
-    def __init__(self, name, key, filter_, selection_func):
-        self.name = name
-        self.key = key
-        name, kw = filter_
-        self.filter = filters[name](**kw)
-        self.models = []
-        self._dep = []
-        self.selected = None
-        self._touch = 0
-        self.selection_func = selection_func
-        BaseController.controllers[self.name] = self
-
-        def f(controller, node, template):
-            controller.touch
-            model = controller.selection_func(controller.models)
-            self.selected = model
-            #for m in controller.models:
-            #    m.selected
-
-            if model:
-                render(model, node, template)
-
-        self.node = jq('#'+self.name)
-
-        for n in self.node.find('[r]'):
-            n_ = jq(n)
-            on_click = n_.attr('on-click')
-            if on_click:
-                method = lambda: getattr(self.selected, on_click)
-                n_.click(method)
-            reactive(f, self, n_, n_.outerHTML())
-
-    @property
-    def touch(self):
-        current_call = get_current_call()
-        if current_call is not None:
-            self._dep.append({'call': current_call, 'attr': 'touch'})
-            add_to_map(self)
-        return self._touch
-
-    @touch.setter
-    def touch(self, model):
-        if self._touch != model:
-            self._touch = model
-            for item in self._dep:
-                if item['attr'] == 'touch' and item['call'] not in execute:
-                    execute.append(item['call'])
-            if get_do_consume():
-                consume()
-
-    def reset(self, func):
-        print('reset', func)
-        ret = []
-        for item in self._dep:
-            if item['call'] != func:
-                ret.append(item)
-        self._dep = ret
-
-    def test(self, model, raw):
-        models = []
-        for m in self.models:
-            models.append(m.id)
-        if model.id in models:
-            print('esta dentro')
-            if pass_filter(self.filter, raw):
-                print('y permance dentro', 'MODIFY')
-                index = self.indexById(model.id)
-                del self.models[index]
-                tupla = self.indexInList(model)
-                self.models.insert(tupla[0], model)
-                #self.selected = self.selection_func(self.models)
-                self.touch += 1
-                return False
-            else:
-                print('y sale', 'OUT')
-                index = self.indexById(model.id)
-                del self.models[index]
-                #self.selected = self.selection_func(self.models)
-                self.touch += 1
-                model.selected = False
-                return True
-        else:
-            print('esta fuera')
-            if pass_filter(self.filter, raw):
-                print('y entra', 'NEW')
-                tupla = self.indexInList(model)
-                self.models.insert(tupla[0], model)
-                #self.selected = self.selection_func(self.models)
-                self.touch += 1
-                return False
-            else:
-                print('y permanece fuera')
-                return True #False
-
-
 class Controller(BaseController):
 
     def __init__(self, name, key, filter):
+        self.filter_object = filter
+        self.limit = filter.limit
+        self.filter_json = filter.raw_filter.copy()
+        raw_filter = filter.raw_filter.copy()
+        filter_name = filter.name
+        self.filter_full_name = tuple([filter_name] + sorted(raw_filter.items()))
         self.name = name
         self.models = []
         self.key = key
-        name, kw = filter
-        self.filter_json = {'__filter__': name}
-        self.filter_json.update(kw)
-        self.filter = filters[name](**kw)
-        #self.node = jq("[each='"+self.name+"']")
+        for attr in ('__key__', '__skip__', '__limit__', '__collection__'):
+            if attr in raw_filter.keys():
+                del raw_filter[attr]
+        self.filter = filters[filter_name](**raw_filter)
+
         self.node = jq('#'+self.name)
         self.node.id = self.node.attr('id')
         self.func = render
@@ -306,6 +216,16 @@ class Controller(BaseController):
     def pass_filter(self, raw):
         return pass_filter(self.filter, raw)
 
+    def test_filter(self, ini):
+        if len(self.models) > self.limit:
+            if ini != self.models[0].id:
+                self.models = self.models[1:]
+                return False
+            else:
+                self.models = self.models[:-1]
+                return False
+        return True
+
     def test(self, model, raw):
         print('==>test', model, raw, model.id)
         models = []
@@ -317,57 +237,53 @@ class Controller(BaseController):
                 print('y permance dentro', 'MODIFY')
                 self.modify(model)
                 self.touch += 1
+
                 return False
             else:
                 print('y sale', 'OUT')
                 self.out(model)
                 self.touch += 1
+
                 return True
         else:
             print('esta fuera')
             if pass_filter(self.filter, raw):
                 print('y entra', 'NEW')
-                self.new(model)
+                self.new(model, raw['__skip__'])
                 self.touch += 1
+                #self.test_filter(raw['__skip__'])
                 return False
             else:
                 print('y permanece fuera')
                 return True #False
 
-    def new(self, model):
+    def new(self, model, i):
         tupla = self.indexInList(model)
-        print('tupla en new', tupla)
         index = tupla[0]
-
         self.models.insert(index, model)
-        print('new: ', model, tupla)
+        if not self.test_filter(i):
+            return
 
         action = tupla[1]
         if action == 'append':
-            print('append')
             node = makeDIV(model.id, model, self.func, jq('#'+str(self.node.id)+' .template').outerHTML(), self)
-
             ref = jq('#'+str(self.node.id))
             ref.append(node)
-            #self.first_model = model
         elif action == 'before':
             node = makeDIV(model.id, model, self.func, jq('#'+str(self.node.id)+' .template').outerHTML(), self)
             ref = jq('#'+str(self.node.id)).children("[reactive_id='"+str(tupla[2])+"']")
             ref.before(node)
         elif action == 'after':
             node = makeDIV(model.id, model, self.func, jq('#'+str(self.node.id)+' .template').outerHTML(), self)
-
             ref = jq('#'+str(self.node.id)).children("[reactive_id='"+str(tupla[2])+"']")
             ref.after(node)
 
     def out(self, model):
         index = self.indexById(model.id)
         del self.models[index]
-        print ('out: ', model)
 
         node = jq('#'+str(self.node.id)).children("[reactive_id='"+str(model.id)+"']")
         node.remove()
-        print('eliminado')
 
     def modify(self, model):
         index = self.indexById(model.id)

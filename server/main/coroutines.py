@@ -42,18 +42,12 @@ def do_find(filt, projection=None): #
     cursor.skip(filt.skip)
     if filt.limit:
         cursor.limit(filt.limit)
-    #ret = []
-    ret = yield cursor.to_list()
+
+    ret = yield cursor.to_list(length=filt.limit)
     for document in ret:
         document['__collection__'] = filt.collection
         document['id'] = document['_id']
         del document['_id']
-    #while (yield cursor.fetch_next):
-    #    document = cursor.next_object()
-    #    document['__collection__'] = filt.collection
-    #    document['id'] = document['_id']
-    #    del document['_id']
-    #    ret.append(document)
     return ret
 
 
@@ -80,13 +74,13 @@ def handle_rpc(item):
 
 
 @gen.coroutine
-def handle_collection2(item):
+def handle_collection(item):
     collection = item['__collection__']
     del item['__client__']
     for client in Client.clients.values():
         for filt in client.filters.values():
             ret = yield do_find(filt, {'_id': 1})
-            filt.before = ret
+            filt.before = [x['id'] for x in ret]
     model_before = yield db[collection].find_one({'_id': item['id']})
     if model_before is None:
         model_id = item.copy()
@@ -110,35 +104,44 @@ def handle_collection2(item):
             yield db[collection].update({'_id': item['id']}, {"$set": model_copy})
         else:
             return
-    yield broadcast2(item)
+    yield broadcast(item)
 
 
 @gen.coroutine
-def broadcast2(item):
+def broadcast(item):
     collection = item['__collection__']
     for client in Client.clients.values():
-        to_send = set()
         for filt in client.filters.values():
-            if item['id'] in filt.before:
-                to_send.add(item)
+            if filt.collection != collection:
+                continue
             after = yield do_find(filt, {'_id': 1})
-            tupla = []
-            if len(after) == 1:
-                tupla = (0, )
-            elif len(after) > 1:
-                tupla = (0, -1)
-            for index in tupla:
-                id = after[index]['_id']
-                if id not in filt.before:
-                    doc = yield db[collection].find_one({'_id': id})
-                    to_send.add(doc)
-        for doc in to_send:
-            yield q_send.put((client.socket, doc))
+            after = [x['id'] for x in after]
+            to_send = None
+            if item['id'] in after:
+                to_send = item
+            else:
+                tupla = []
+                if len(after) == 1:
+                    tupla = (0, )
+                elif len(after) > 1:
+                    tupla = (0, -1)
+                for index in tupla:
+                    id = after[index]
+                    if id not in filt.before:
+                        doc = yield db[collection].find_one({'_id': id})
+                        doc['id'] = doc['_id']
+                        del doc['_id']
+                        doc['__collection__'] = collection
+                        to_send = doc
+                        break
+            if to_send:
+                to_send['__filter__'] = filt.full_name
+                to_send['__skip__'] = after[0]
+                yield q_send.put((client.socket, to_send))
 
-
-
+"""
 @gen.coroutine
-def handle_collection(item):
+def _handle_collection(item):
     collection = item['__collection__']
     del item['__client__']
     model = item
@@ -180,7 +183,7 @@ def handle_collection(item):
 
 
 @gen.coroutine
-def broadcast(collection, new, model_before, deleted, model):
+def _broadcast(collection, new, model_before, deleted, model):
     print('len: ', len(Client.clients))
     for client in Client.clients.values():
         print('filter of client:', client.filters)
@@ -242,6 +245,8 @@ def broadcast(collection, new, model_before, deleted, model):
             if break_flag:
                 print('             break')
                 break
+"""
+
 
 @gen.coroutine
 def mongo_consumer():

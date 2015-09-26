@@ -1,9 +1,24 @@
-from components.main.filter_ import filters
+#from components.main.filter_ import filters
 
+filters = {}
+
+
+def filter(collection):
+    def helper1(func):
+        def helper2(**kw):
+            ret = func(**kw)
+            ret.update({'__collection__': collection})
+            return ret
+        filters[func.__name__] = helper2
+        return helper2
+    return helper1
 
 class Filter(object):
     def __init__(self, item):
         self.name = item.pop('__filter__')
+        self.stop = item.pop('__stop__', None)
+        self.raw_filter = item.copy()
+        self.full_name = str([self.name] + sorted(self.raw_filter.items()))
         self.key = item.pop('__key__', None)
         self.limit = item.pop('__limit__', None)
         self.collection = item.pop('__collection__')

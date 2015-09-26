@@ -83,9 +83,27 @@ def test_new_append():
     controller.jq = jq
     controller_ = Controller(name='', key=[('x', 'desc'), ('y', 'desc')], filter=filter)
     m = A(id='2', x=0, y=3)
-    controller_.new(m, 0)
+    controller_.new(m, '0')
     assert append.called
     assert controller_.models == [m]
+
+
+def test_new_controller_limit_is_0():
+    jq = MagicMock()
+    jq.find().__iter__.return_value = []
+    append = jq().append
+    remove = jq().children().remove
+
+    controller.jq = jq
+    controller_ = Controller(name='', key=[('x', 'desc'), ('y', 'desc')], filter=filter)
+    m = A(id='2', x=0, y=3)
+    controller_.limit = 0
+    controller_.new(m, '0')
+    assert not append.called
+    assert not remove.called
+    assert not jq().children().after.called
+    assert not jq().children().before.called
+    assert controller_.models == []
 
 
 def test_new__before():

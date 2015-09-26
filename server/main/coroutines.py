@@ -44,7 +44,6 @@ def do_find(filt, projection=None): #
     if filt.limit:
         cursor.limit(filt.limit)
 
-    print('llego*')
     ret = yield cursor.to_list(length=filt.limit)
     for document in ret:
         document['__collection__'] = filt.collection
@@ -113,6 +112,17 @@ def handle_collection(item):
 
 
 @gen.coroutine
+def do_find_one(collection, id):
+    doc = yield db[collection].find_one({'_id': id})
+    if doc:
+        doc['__collection__'] = collection
+        doc['id'] = doc['_id']
+        del doc['_id']
+        return doc
+    return None
+
+
+@gen.coroutine
 def broadcast(item):
     collection = item['__collection__']
     for client in Client.clients.values():
@@ -135,124 +145,13 @@ def broadcast(item):
                 for index in tupla:
                     id = after[index]
                     if id not in filt.before:
-                        doc = yield db[collection].find_one({'_id': id})
-                        doc['id'] = doc['_id']
-                        del doc['_id']
-                        doc['__collection__'] = collection
+                        doc = yield do_find_one(collection, id)
                         to_send = doc
                         break
             if to_send:
                 to_send['__filter__'] = filt.full_name
                 to_send['__skip__'] = after[0]
                 yield q_send.put((client.socket, to_send))
-
-"""
-@gen.coroutine
-def _handle_collection(item):
-    collection = item['__collection__']
-    del item['__client__']
-    model = item
-
-    new = False
-    deleted = False
-    print('buscamos model before')
-    model_before = yield db[collection].find_one({'_id': model['id']})
-    print('model before', model_before)
-    if model_before is None:
-        model_id = model.copy()
-        model_id['_id'] = model_id['id']
-        del model_id['id']
-        del model_id['__collection__']
-
-        if validate(model):
-            print('yield insert', model_id)
-            yield db[collection].insert(model_id)
-        else:
-            print('retornamos sin hacer insert')
-            return
-        new = True
-    elif '__deleted__' in model.keys():
-        deleted = True
-        print('yield remove')
-        yield db[collection].remove({'_id': model['id']})
-    else:
-        model_copy = model.copy()
-        del model_copy['id']
-        del model_copy['__collection__']
-        print('yield update')
-        model2validate = model_before.copy()
-        model2validate.update(model)
-        if validate(model2validate):
-            yield db[collection].update({'_id': model['id']}, {"$set": model_copy})
-        else:
-            return
-    yield broadcast(collection, new, model_before, deleted, model)
-
-
-@gen.coroutine
-def _broadcast(collection, new, model_before, deleted, model):
-    print('len: ', len(Client.clients))
-    for client in Client.clients.values():
-        print('filter of client:', client.filters)
-        for filt in client.filters.values():
-            print('filt', filt)
-            break_flag = False
-            position_after = None
-            last_doc = None
-
-            if filt.collection != collection:
-                print('continue')
-                continue
-            if filt.limit:
-                if model_before:
-                    docs = yield do_find(filt)
-                    last_doc = docs[-1]
-                    pos = index_by_id(docs, model_before['id'])
-                    position_after = pos
-                    if pos is not None and pos < filt.limit:
-                        del docs[pos]
-                    pos = index_in_list(docs, filt.key, model_before)
-                    if pos >= filt.limit:
-                        before = False
-                    else:
-                        before = True # and filt.pass_filter(model_before)
-                else:
-                    docs = yield do_find(filt)
-                    position_after = index_by_id(docs, model['id'])
-                    before = False
-            else:
-                before = (not new) and filt.pass_filter(model_before)
-
-            print('before', before)
-            after = None
-            if not before and not deleted:
-                if model_before is None:    # repasar esto
-                    model_after = model.copy()
-                else:
-                    model_after = model_before.copy()
-                    model_after.update(model)
-
-                if filt.limit:
-                    after = position_after < filt.limit # and filt.pass_filter(model_after)
-                else:
-                    after = filt.pass_filter(model_after)
-                print('after:', after)
-                if after:
-                    print('send(1)', client.socket, model)
-                    yield q_send.put((client.socket, model))
-                    break_flag = True
-            else:
-                print('send(2)', client.socket, model)
-                yield q_send.put((client.socket, model))
-                break_flag = True
-
-            if before and filt.limit and position_after >= filt.limit and last_doc and last_doc['id'] != model['id']:
-                print('send(3)', client.socket, last_doc)
-                yield q_send.put((client.socket, last_doc))
-            if break_flag:
-                print('             break')
-                break
-"""
 
 
 @gen.coroutine

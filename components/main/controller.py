@@ -220,9 +220,13 @@ class Controller(BaseController):
     def test_filter(self, ini):
         if len(self.models) > self.limit:
             if ini != self.models[0].id:
+                #self.out(self.models[0])
+                #self.touch += 1
                 self.models = self.models[1:]
                 return False
             else:
+                #self.out(self.models[-1])
+                #self.touch += 1
                 self.models = self.models[:-1]
                 return False
         return True
@@ -238,13 +242,11 @@ class Controller(BaseController):
                 print('y permance dentro', 'MODIFY')
                 self.modify(model)
                 self.touch += 1
-
                 return False
             else:
                 print('y sale', 'OUT')
                 self.out(model)
                 self.touch += 1
-
                 return True
         else:
             print('esta fuera')

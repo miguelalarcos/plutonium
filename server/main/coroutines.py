@@ -8,6 +8,7 @@ from server.main.DB import DB
 from server.main.validation import validate
 from server.main.task import registered_tasks
 from components.lib.utils import index_by_id, index_in_list
+from components.lib.filter_mongo import Filter
 
 
 db = motor.MotorClient().test_database
@@ -58,8 +59,8 @@ def handle_filter(item):
     client_socket = item.pop('__client__')
     client = Client.clients[client_socket]
 
-    name = item.pop('__filter__')
-    filt = client.add_filter(name, item)
+    #name = item.pop('__filter__')
+    filt = client.add_filter(Filter(item))
 
     ret = yield do_find(filt)
     if len(ret) > 0:

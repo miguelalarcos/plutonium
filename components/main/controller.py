@@ -2,7 +2,7 @@ import browser
 window = browser.window
 jq = window.jq
 
-from components.lib.filter_mongo import pass_filter
+#from components.lib.filter_mongo import pass_filter
 from components.main.reactive import reactive, get_current_call, execute, consume, add_to_map, get_do_consume
 import re
 import json
@@ -215,7 +215,8 @@ class Controller(BaseController):
         self._dep = ret
 
     def pass_filter(self, raw):
-        return pass_filter(self.filter, raw)
+        #return pass_filter(self.filter, raw)
+        return self.filter_object.pass_filter(raw)
 
     def test_filter(self, ini):
         if len(self.models) > self.limit:
@@ -238,7 +239,7 @@ class Controller(BaseController):
             models.append(m.id)
         if model.id in models:
             print('esta dentro')
-            if pass_filter(self.filter, raw):
+            if self.pass_filter(raw):
                 print('y permance dentro', 'MODIFY')
                 self.modify(model)
                 self.touch += 1
@@ -250,7 +251,7 @@ class Controller(BaseController):
                 return True
         else:
             print('esta fuera')
-            if pass_filter(self.filter, raw):
+            if self.pass_filter(raw):
                 print('y entra', 'NEW')
                 self.new(model, raw.get('__skip__'))
                 self.touch += 1

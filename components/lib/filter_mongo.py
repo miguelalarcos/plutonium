@@ -13,17 +13,30 @@ def filter(collection):
         return helper2
     return helper1
 
+
 class Filter(object):
-    def __init__(self, item):
-        self.name = item.pop('__filter__')
-        self.stop = item.pop('__stop__', None)
-        self.raw_filter = item.copy()
-        self.full_name = str([self.name] + sorted(self.raw_filter.items()))
-        self.key = item.pop('__key__', None)
-        self.limit = item.pop('__limit__', None)
-        self.collection = item.pop('__collection__')
-        self.skip = item.pop('__skip__', 0)
-        self.filter = filters[self.name](**item)
+    def __init__(self, item=None, **kw):
+        if item:
+            self.name = item.pop('__filter__')
+            self.stop = item.pop('__stop__', None)
+            self.raw_filter = item.copy()
+            self.full_name = str([self.name] + sorted(self.raw_filter.items()))
+            self.key = item.pop('__key__', None)
+            self.limit = item.pop('__limit__', None)
+            self.collection = item.pop('__collection__')
+            self.skip = item.pop('__skip__', 0)
+            self.filter = filters[self.name](**item)
+        else:
+            item = kw
+            self.name = item.pop('filter')
+            self.stop = item.pop('stop', None)
+            self.raw_filter = item.copy()
+            self.full_name = str([self.name] + sorted(self.raw_filter.items()))
+            self.key = item.pop('key', None)
+            self.limit = item.pop('limit', None)
+            self.collection = item.pop('collection')
+            self.skip = item.pop('skip', 0)
+            self.filter = filters[self.name](**item)
 
     def pass_filter(self, model):
         print('model en pass_filter', model)
@@ -55,7 +68,7 @@ class Filter(object):
         return True
 
 
-def pass_filter(filter, model):
+def _pass_filter(filter, model):
     print('model en pass_filter', model)
     if '__deleted__' in model.keys():
         return False

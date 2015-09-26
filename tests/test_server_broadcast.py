@@ -9,9 +9,11 @@ from server.main import coroutines
 from components.lib.filter_mongo import Filter
 broadcast = coroutines.broadcast
 
-filter = Filter({'__collection__': 'A', '__filter__': 'my_filter',
-                                    'x': 5, 'y': 10, '__key__': [('x', -1), ], '__limit__': 2,
-                                    '__skip__': 0})
+#filter = Filter({'__collection__': 'A', '__filter__': 'my_filter',
+#                                    'x': 5, 'y': 10, '__key__': [('x', -1), ], '__limit__': 2,
+#                                    '__skip__': 0})
+
+filter = Filter(collection='A', filter='my_filter', key=[('x', -1), ], limit=2, skip='0', x=5, y=10)
 
 @pytest.fixture
 def client():

@@ -1,5 +1,3 @@
-#from components.main.filter_ import filters
-
 filters = {}
 
 

@@ -7,10 +7,15 @@ from components.main.controller import render, makeDIV
 from components.main.reactive import Model, consume, execute
 from components.main import controller
 from collections import namedtuple
+from components.lib.filter_mongo import filter, Filter
 
-filters = {}
-controller.filters = filters
-filters['0'] = lambda x, y: {'__collection__': 'A', 'x': {"$gt": x, "$lt": y}}
+#filters = {}
+#controller.filters = filters
+#filters['0'] = lambda x, y: {'__collection__': 'A', 'x': {"$gt": x, "$lt": y}}
+
+@filter('A')
+def my_filter(x, y):
+    return {'x': {"$gt": x, "$lt": y}}
 
 
 class A(Model):
@@ -90,14 +95,18 @@ def test_render_model_selection():
 
     m = A(id=None, x=8, y=9)
 
+    filter = Filter({'__collection__': 'A', '__filter__': 'my_filter',
+                                    'x': 0, 'y': 1000, '__key__': [('x', -1), ], '__limit__': 2,
+                                    '__skip__': 0})
+
     jq.side_effect = [node, node1, node2]
-    cc = controller.Controller('cc', key=[('x', 'desc'), ('y', 'desc')], filter=('0', {'x': 0, 'y': 1000}))
+    cc = controller.Controller('cc', key=[('x', 'desc'), ('y', 'desc')], filter=filter)
     jq.side_effect = side_effect
     c = controller.SelectedModelControllerRef('c', cc, selection)
 
     jq.side_effect = None
 
-    cc.test(m, {'x': 8, 'y': 9})
+    cc.test(m, {'x': 8, 'y': 9, '__skip__': '0'})
     #consume()
 
     assert not node.html.called
@@ -111,7 +120,7 @@ def test_render_model_selection():
     assert call('800') in node1.html.mock_calls
 
     m2 = A(id=None, x=801, y=19)
-    cc.test(m2, {'x': 801, 'y': 19})
+    cc.test(m2, {'x': 801, 'y': 19, '__skip__': '0'})
     #consume()
     assert c.selected == m2
     assert call('801') in node1.html.mock_calls
@@ -120,7 +129,7 @@ def test_render_model_selection():
     #assert len(execute) == 1
     #consume()
     assert call('20') in node2.html.mock_calls
-    cc.test(m2, {'x': 1001, 'y': 20})
+    cc.test(m2, {'x': 1001, 'y': 20, '__skip__': '0'})
     #consume()
     assert call('800') in node1.html.mock_calls
     assert c.selected == m
@@ -162,14 +171,18 @@ def test_render_model_selection_selected():
             return node
         return arg
 
+    filter = Filter({'__collection__': 'A', '__filter__': 'my_filter',
+                                    'x': 0, 'y': 1000, '__key__': [('x', -1), ], '__limit__': 2,
+                                    '__skip__': 0})
+
     jq.side_effect = [node, node1, node2]
-    cc = controller.Controller('cc', key=[('x', 'desc'), ('y', 'desc')], filter=('0', {'x': 0, 'y': 1000}))
+    cc = controller.Controller('cc', key=[('x', 'desc'), ('y', 'desc')], filter=filter)
     jq.side_effect = side_effect
     c = controller.SelectedModelControllerRef('c', cc, selection_func=selection)
 
     m = A(id=None, x=8, y=9)
 
-    cc.test(m, {'x': 8, 'y': 9})
+    cc.test(m, {'x': 8, 'y': 9, '__skip__': '0'})
     #consume()
 
     m.selected = True
@@ -178,19 +191,19 @@ def test_render_model_selection_selected():
     assert c.selected == m
 
     m2 = A(id=None, x=801, y=19)
-    cc.test(m2, {'x': 801, 'y': 19})
+    cc.test(m2, {'x': 801, 'y': 19, '__skip__': '0'})
     m.selected = False
     m2.selected = True
     #consume()
     assert c.selected == m2
 
     m3 = A(id=None, x=1, y=1)
-    cc.test(m3, {'x': 1, 'y': 1})
+    cc.test(m3, {'x': 1, 'y': 1, '__skip__': '0'})
     m2.selected = False
     m3.selected = True
     #consume()
     assert c.selected == m3
     m3.x = -1
-    cc.test(m3, {'x': -1, 'y': 1})
+    cc.test(m3, {'x': -1, 'y': 1, '__skip__': '0'})
     assert c.selected is None
 

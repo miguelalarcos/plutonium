@@ -2,11 +2,11 @@ import browser
 window = browser.window
 jq = window.jq
 
-from components.lib.filter_mongo import pass_filter, Filter
+from components.lib.filter_mongo import pass_filter
 from components.main.reactive import reactive, get_current_call, execute, consume, add_to_map, get_do_consume
 import re
 import json
-from components.main.filter_ import filters
+from components.lib.filter_mongo import filters
 
 
 def render(model, node, template): # ver si puedo quitar el argumento template y sustituirlo por node.outerHTML
@@ -175,6 +175,7 @@ class Controller(BaseController):
         for attr in ('__key__', '__skip__', '__limit__', '__collection__'):
             if attr in raw_filter.keys():
                 del raw_filter[attr]
+
         self.filter = filters[filter_name](**raw_filter)
 
         self.node = jq('#'+self.name)

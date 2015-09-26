@@ -3,11 +3,12 @@ sys.path.insert(0, '.')
 from mock import Mock, MagicMock, call
 sys.modules['browser'] = Mock()
 
+from components.lib.filter_mongo import Filter, filter
 from components.main import controller
 from components.main.controller import Controller
 from components.main.reactive import Model
 from collections import namedtuple
-from components.lib.filter_mongo import Filter, filter, filters
+
 
 
 class DIV(object):
@@ -21,13 +22,12 @@ class A(Model):
     def __init__(self, id, **kw):
         super(A, self).__init__(id, **kw)
 
-#filters = {}
-controller.filters = filters
-#filters['0'] = lambda x, y: {'__collection__': 'A', 'x': {"$gt": x, "$lt": y}}
+#controller.filters = filters
 
 @filter('A')
 def my_filter(x, y):
     return {'x': {"$gt": x, "$lt": y}}
+
 
 filter = Filter({'__collection__': 'A', '__filter__': 'my_filter',
                                     'x': 5, 'y': 10, '__key__': [('x', -1), ], '__limit__': 2,

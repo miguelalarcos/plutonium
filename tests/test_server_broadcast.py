@@ -9,18 +9,26 @@ from server.main import coroutines
 from components.lib.filter_mongo import Filter
 broadcast = coroutines.broadcast
 
-socket = Mock()
-cl = Client(socket)
+#socket = Mock()
+#Client.clients = {}
+#cl = Client(socket)
 
 filter = Filter({'__collection__': 'A', '__filter__': 'my_filter',
                                     'x': 5, 'y': 10, '__key__': [('x', -1), ], '__limit__': 2,
                                     '__skip__': 0})
 
+@pytest.fixture
+def clean():
+    Client.clients = {}
 
 @pytest.mark.gen_test
-def test_1():
+def test_broadcas_1(monkeypatch, clean):
+    socket = Mock()
+    cl = Client(socket)
+    print('-->', Client.clients)
     cl.filters = {}
     cl.add_filter(filter)
+    print('-->', cl.filters)
     model = {'id': '0', 'x': 8, '__collection__': 'A'}
 
     do_find = Mock()
@@ -28,15 +36,17 @@ def test_1():
     def f(*args, **kw):
         do_find(*args, **kw)
         return [{'id': '0'}]
-    coroutines.do_find = f
+    #coroutines.do_find = f
+    monkeypatch.setattr(coroutines, 'do_find', f)
 
     put = Mock()
     @gen.coroutine
     def fput(arg):
         put(arg[1])
         return None
-    coroutines.q_send = Mock()
-    coroutines.q_send.put = fput
+    monkeypatch.setattr(coroutines.q_send, 'put', fput)
+    #coroutines.q_send = Mock()
+    #coroutines.q_send.put = fput
 
     yield broadcast(model)
 

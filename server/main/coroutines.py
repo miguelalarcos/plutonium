@@ -33,6 +33,7 @@ def sender():
 
 @gen.coroutine
 def do_find(filt, projection=None): #
+
     if projection:
         cursor = db[filt.collection].find(filt.filter, projection)
     else:
@@ -43,6 +44,7 @@ def do_find(filt, projection=None): #
     if filt.limit:
         cursor.limit(filt.limit)
 
+    print('llego*')
     ret = yield cursor.to_list(length=filt.limit)
     for document in ret:
         document['__collection__'] = filt.collection
@@ -77,7 +79,9 @@ def handle_rpc(item):
 def handle_collection(item):
     collection = item['__collection__']
     del item['__client__']
+    print('llego')
     for client in Client.clients.values():
+        print('client.filters', client.filters)
         for filt in client.filters.values():
             ret = yield do_find(filt, {'_id': 1})
             filt.before = [x['id'] for x in ret]
@@ -104,6 +108,7 @@ def handle_collection(item):
             yield db[collection].update({'_id': item['id']}, {"$set": model_copy})
         else:
             return
+
     yield broadcast(item)
 
 
@@ -111,7 +116,9 @@ def handle_collection(item):
 def broadcast(item):
     collection = item['__collection__']
     for client in Client.clients.values():
+        print(client.filters.values())
         for filt in client.filters.values():
+            print(filt.collection, collection)
             if filt.collection != collection:
                 continue
             after = yield do_find(filt, {'_id': 1})

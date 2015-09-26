@@ -10,11 +10,10 @@ import components.main.filters.my_filter
 from components.lib.filter_mongo import Filter
 
 handle = coroutines.handle_collection
+#socket = Mock()
+#Client.clients = {}
 
-socket = Mock()
-
-client = Client(socket)
-
+#client = Client(socket)
 q_send = Mock()
 
 @gen.coroutine
@@ -30,9 +29,16 @@ def set_db():
     coroutines.db = db
     return db
 
+@pytest.fixture(scope="module")
+def client():
+    Client.clients = {}
+    socket = Mock()
+    cl = Client(socket)
+    return cl
 
 @pytest.mark.gen_test
-def test_update_collection_in_and_in(set_db):
+def test_update_collection_in_and_in(set_db, client):
+
     q_send.reset_mock()
     db = set_db
     item = {'__client__': None, '__collection__':'A', 'id': '0', 'x': 8}
@@ -47,8 +53,8 @@ def test_update_collection_in_and_in(set_db):
 
     to_list = Mock()
     @gen.coroutine
-    def f():
-        to_list()
+    def f(length):
+        to_list(length)
         return ret.pop(0)
 
     find_one = Mock()
@@ -80,7 +86,7 @@ def test_update_collection_in_and_in(set_db):
 
 
 @pytest.mark.gen_test
-def test_update_collection_in_and_out(set_db):
+def test_update_collection_in_and_out(set_db, client):
     q_send.reset_mock()
     db = set_db
     item = {'__client__': None, '__collection__':'A', 'id': '0', 'x': 6}
@@ -94,8 +100,8 @@ def test_update_collection_in_and_out(set_db):
 
     to_list = Mock()
     @gen.coroutine
-    def f():
-        to_list()
+    def f(length):
+        to_list(length)
         return ret.pop(0)
 
     find_one = Mock()

@@ -1,7 +1,7 @@
-filters = {}
+_filters = {}
 
 
-def filter(collection):
+def _filter(collection):
     def helper1(func):
         def helper2(**kw):
             ret = func(**kw)

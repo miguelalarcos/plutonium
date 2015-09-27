@@ -6,14 +6,29 @@ sys.modules['browser'] = Mock()
 from components.main.controller import render_ex
 from bs4 import BeautifulSoup
 from components.main.reactive import Model
+from components.main import controller
 
-helpers = {}
+#helpers = {}
+
+def side_effect(arg):
+    return arg
+jq = MagicMock()
+jq.side_effect = side_effect
+controller.jq = jq
+
+
 
 class A(Model):
     objects = {}
 
     def __init__(self, id, **kw):
         super(A, self).__init__(id, **kw)
+
+    def h(self):
+        return self.x > 10
+
+    def xplus1(self):
+        return self.x + 1
 
 
 class Attribute(object):
@@ -31,18 +46,17 @@ class Node(object):
         for k, v in self.soup.attrs.items():
             self.attributes.append(Attribute(k, v))
         self._children = [Node(str(x), self) for x in self.soup.children if x.name in ('div', 'span')]
+        self._data = None
 
     def __getitem__(self, item):
         return self
 
     def data(self, key, value=None):
         if value:
-            helpers[self.soup.attrs['id']] = value
+            self._data = value
         else:
-            try:
-                return helpers[self.soup.attrs['id']]
-            except KeyError:
-                return None
+            return self._data
+
 
     def find(self, attr):
         if attr == '[r]':
@@ -96,9 +110,15 @@ class Node(object):
         if attr in self.soup.attrs:
             del self.soup.attrs[attr]
 
+    def click(self, method=None):
+        if method is not None:
+            self._click = method
+        else:
+            return self._click()
+
 
 def test_basic_render_ex():
-    node = Node("<div if='{z}'><span id='0' template=true><span id='1' r>{x}</span><span id='2' r>{y}</span></span></div>")
+    node = Node("<div if='{z}'><span id='0' template=true><span r>{x}</span><span r>{y}</span></span></div>")
     m = A(id=None, x=8, y=9, z=False)
     render_ex(node, m)
     assert node.children() == []
@@ -117,4 +137,27 @@ def test_basic_render_ex():
     m.z = True
     assert len(node.children()) == 1
     assert node.children()[0].attr('id') == '0'
-    #assert False
+
+
+def test_basic_render_ex_method():
+    node = Node("<div if='{h}'><span id='0' template=true><span r on-click='{xplus1}'>{x}</span><span r>{y}</span></span></div>")
+    m = A(id=None, x=8, y=9, z=False)
+    render_ex(node, m)
+    assert node.children() == []
+    m.y = 900
+    assert node.children() == []
+    m.x = 9
+    assert node.children() == []
+    m.x = 11
+    assert len(node.children()) == 1
+    assert node.first().first().click() == 12
+    assert node.children()[0].attr('id') == '0'
+    assert node.first().attr('template') is None
+
+    m.x = 12
+    assert len(node.children()) == 1
+    assert len(node.first().children()) == 2
+    assert node.first().attr('template') is None
+    m.x = 0
+    assert len(node.children()) == 0
+

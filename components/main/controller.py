@@ -12,7 +12,7 @@ from components.lib.filter_mongo import filters
 def render_ex(node, model):
     def render(n, m, template):
         dct = {}
-        attrs = re.findall('\{[a-zA-Z_09]+\}', template)
+        attrs = re.findall('\{[a-zA-Z_0-9]+\}', template)
         for attr in attrs:
             attr = attr[1:-1]
             v = getattr(m, attr)
@@ -46,6 +46,13 @@ def render_ex(node, model):
                     else:
                         return
                 for ch in children:
+                    on_click = ch.attr('on-click')
+                    if on_click:
+                        on_click = on_click[1:-1]
+                        def f(name):
+                            return lambda: getattr(m, name)()
+                        method = f(on_click)
+                        ch.click(method)
                     render_ex(ch, m)
         else:
             if n.first():
@@ -54,10 +61,13 @@ def render_ex(node, model):
                         m.reset(ch.data('helper'))
                 n.first().remove()
 
+    children_ = []
+    for n_ in node.children():
+        children_.append(jq(n_))
     if node.attr('if'):
-        reactive(helper, node, model, node.children())
+        reactive(helper, node, model, children_) # node.children())
     else:
-        helper(node, model, node.children())
+        helper(node, model, children_) # node.children())
 
 
 def render(model, node, template): # ver si puedo quitar el argumento template y sustituirlo por node.outerHTML
@@ -196,7 +206,8 @@ class SelectedModelControllerRef(BaseController):
             self.selected = model
 
             if model:
-                render(model, node, template)
+                render_ex(node, model)
+                #render(model, node, template)
 
         self.node = jq('#'+self.name)
         for n in self.node.find('[r]'):

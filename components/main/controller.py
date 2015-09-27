@@ -9,7 +9,7 @@ import json
 from components.lib.filter_mongo import filters
 
 
-def render_ex(node, model):
+def render_ex(node, model, controller=None):
     def render(n, m, template):
         dct = {}
         attrs = re.findall('\{[a-zA-Z_0-9]+\}', template)
@@ -26,6 +26,8 @@ def render_ex(node, model):
         print('***render', n.html())
 
     def helper(n, m, children):
+        if callable(m):
+            m = m()
         v = True
         if n.attr('if'):
             attr = n.attr('if')[1:-1]
@@ -49,9 +51,10 @@ def render_ex(node, model):
                     on_click = ch.attr('on-click')
                     if on_click:
                         on_click = on_click[1:-1]
-                        def f(name):
-                            return lambda: getattr(m, name)()
-                        method = f(on_click)
+                        if hasattr(m, on_click):
+                            method = getattr(m, on_click)
+                        else:
+                            method = getattr(controller, on_click)
                         ch.click(method)
                     render_ex(ch, m)
         else:
@@ -72,7 +75,7 @@ def render_ex(node, model):
 
 def render(model, node, template): # ver si puedo quitar el argumento template y sustituirlo por node.outerHTML
     dct = {}
-    attrs = re.findall('\{[a-zA-Z_09]+\}', template)
+    attrs = re.findall('\{[a-zA-Z_0-9]+\}', template)
     for attr in attrs:
         attr = attr[1:-1]
         v = getattr(model, attr)
@@ -87,10 +90,9 @@ def render(model, node, template): # ver si puedo quitar el argumento template y
 
 
 def makeDIV(id, model, func, template, controller=None):
-    print('template', template)
-    #node = jq("<div reactive_id='"+str(id)+"'>test</div>")
-    #node.html(template)
     node = jq(template)  # ojo el template original debe llevar reactive_id='{id}'
+    render_ex(node, model, controller)
+    return node
     node.removeClass('template')
     for n in node.find("[r]"):
         n_ = jq(n)
@@ -198,25 +200,26 @@ class SelectedModelControllerRef(BaseController):
                     s = m_
             return s
 
-        self.selection_func = selection_func or fselected
-
-        def f(controller, node, template):
+        self.selection_func = selection_func or fselected #
+        controller = ref
+        def f():
             controller.touch
-            model = self.selection_func(controller.models)
-            self.selected = model
+            model = (selection_func or fselected)(controller.models)
+            self.selected = model  #
+            return model
 
-            if model:
-                render_ex(node, model)
-                #render(model, node, template)
+            #if model:
+            #    render(model, node, template)
 
         self.node = jq('#'+self.name)
-        for n in self.node.find('[r]'):
-            n_ = jq(n)
-            on_click = n_.attr('on-click')
-            if on_click:
-                method = lambda: getattr(self.selected, on_click)
-                n_.click(method)
-            reactive(f, self.ref, n_, n_.outerHTML())
+        render_ex(self.node, f)
+        #for n in self.node.find('[r]'):
+        #    n_ = jq(n)
+        #    on_click = n_.attr('on-click')
+        #    if on_click:
+        #        method = lambda: getattr(self.selected, on_click)
+        #        n_.click(method)
+        #    reactive(f, self.ref, n_, n_.outerHTML())
 
 
 class Controller(BaseController):

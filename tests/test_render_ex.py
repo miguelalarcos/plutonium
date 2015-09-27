@@ -30,38 +30,40 @@ class Node(object):
         self.attributes = []
         for k, v in self.soup.attrs.items():
             self.attributes.append(Attribute(k, v))
+        self._children = [Node(str(x), self) for x in self.soup.children if x.name in ('div', 'span')]
 
     def __getitem__(self, item):
         return self
 
     def data(self, key, value=None):
         if value:
-            print('seteo', self.soup.attrs['id'])
             helpers[self.soup.attrs['id']] = value
         else:
             try:
                 return helpers[self.soup.attrs['id']]
             except KeyError:
-                print('return none')
                 return None
 
     def find(self, attr):
         if attr == '[r]':
-            return [Node(str(x), self) for x in self.soup.find_all() if x.name in ('div', 'span') and x.has_attr('r')]
+            return [x for x in self._children if x.attr('r')]
+            #return [Node(str(x), self) for x in self.soup.find_all() if x.name in ('div', 'span') and x.has_attr('r')]
             #return self.soup.find_all(r="")
         return []
 
     def remove(self):
         self.parent.soup.clear()
+        self.parent._children = []
 
     def first(self):
         try:
-            return self.children()[0]
+            return self._children[0]
         except IndexError:
             return None
 
     def append(self, nodes):
         node = nodes[0]
+        self._children.append(node)
         node = BeautifulSoup(node._html, 'html.parser').div or BeautifulSoup(node._html, 'html.parser').span
         self.soup.append(node)
 
@@ -71,7 +73,8 @@ class Node(object):
         self._html = value
 
     def children(self):
-        return [Node(str(x), self) for x in self.soup.children if x.name in ('div', 'span')]
+        return self._children
+        #return [Node(str(x), self) for x in self.soup.children if x.name in ('div', 'span')]
 
     def attr(self, attr, value=None):
         if value is None:
@@ -83,26 +86,35 @@ class Node(object):
             for item in self.attributes:
                 if item.name == attr:
                     item.value = value
+                    self.soup.attrs[attr] = value
 
     def outerHTML(self):
         return self._html
 
     def removeAttr(self, attr):
         self.attributes = [x for x in self.attributes if x.name != attr]
+        if attr in self.soup.attrs:
+            del self.soup.attrs[attr]
 
 
-def test_1():
+def test_basic_render_ex():
     node = Node("<div if='{z}'><span id='0' template=true><span id='1' r>{x}</span><span id='2' r>{y}</span></span></div>")
     m = A(id=None, x=8, y=9, z=False)
     render_ex(node, m)
     assert node.children() == []
     m.y = 900
+    assert node.children() == []
     m.y = 901
+    assert node.children() == []
     m.z = True
+    assert len(node.children()) == 1
     assert node.children()[0].attr('id') == '0'
-    print('-'*50)
+    assert node.first().attr('template') is None
     m.z = False
-    print('-'*50)
+    assert node.children() == []
     m.x = 1000
     assert node.children() == []
-    assert False
+    m.z = True
+    assert len(node.children()) == 1
+    assert node.children()[0].attr('id') == '0'
+    #assert False

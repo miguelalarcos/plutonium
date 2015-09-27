@@ -10,7 +10,7 @@ from components.lib.filter_mongo import filters
 
 
 def render_ex(node, model):
-    def func(n, m, template):
+    def render(n, m, template):
         dct = {}
         attrs = re.findall('\{[a-zA-Z_09]+\}', template)
         for attr in attrs:
@@ -25,7 +25,7 @@ def render_ex(node, model):
             n.attr(item.name, item.value.format(**dct))
         print('***render', n.html())
 
-    def func2(n, m, children):
+    def helper(n, m, children):
         v = True
         if n.attr('if'):
             attr = n.attr('if')[1:-1]
@@ -35,12 +35,12 @@ def render_ex(node, model):
         if v:
             if not children:
                 if n.attr('r') or n.attr('r') == '':
-                    print('set helper', n)
-                    n.data('helper', reactive(func, n, m, n.outerHTML()))
+                    n.data('helper', reactive(render, n, m, n.outerHTML()))
             else:
                 if n.attr('if'):
                     if n.first() is None:
                         n.append(children)
+                        n.first().removeAttr('template')
                     elif n.first().attr('template'):
                         n.first().removeAttr('template')
                     else:
@@ -49,19 +49,15 @@ def render_ex(node, model):
                     render_ex(ch, m)
         else:
             if n.first():
-                print('llego')
                 for ch in n.find('[r]'):
-                    print('       ', ch._html)
                     if ch.data('helper'):
-                        print('llamo a reset')
                         m.reset(ch.data('helper'))
-                print('hago remove')
                 n.first().remove()
 
     if node.attr('if'):
-        reactive(func2, node, model, node.children())
+        reactive(helper, node, model, node.children())
     else:
-        func2(node, model, node.children())
+        helper(node, model, node.children())
 
 
 def render(model, node, template): # ver si puedo quitar el argumento template y sustituirlo por node.outerHTML

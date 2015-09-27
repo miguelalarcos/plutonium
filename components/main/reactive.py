@@ -61,6 +61,7 @@ def reactive(func, *args, **kw):
         current_call = None
 
     helper()
+    return helper
 
 
 def register(klass):
@@ -110,11 +111,15 @@ class Model(object):
         Model.ws.send(json.dumps(data))
 
     def reset(self, func):
+        print('***reset', func)
+        print(self._dep)
         ret = []
         for item in self._dep:
             if item['call'] != func:
                 ret.append(item)
         self._dep = ret
+        print(self._dep)
+        print('***')
 
     def __getattr__(self, name):
         if current_call is not None:

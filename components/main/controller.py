@@ -10,18 +10,14 @@ from components.lib.filter_mongo import filters
 
 
 def render_ex(node, model):
-    print('render ex:', node.html())
-
     def func(n, m, template):
-        #print('func', n, n.html(), n.outerHTML(), template)
         dct = {}
-        attrs = re.findall('\{[a-zA-Z_09]+\}', template) #n.outerHTML())
+        attrs = re.findall('\{[a-zA-Z_09]+\}', template)
         for attr in attrs:
             attr = attr[1:-1]
             v = getattr(m, attr)
             if callable(v):
                 v = v()
-            print(v)
             dct[attr] = v
 
         n.html(template.format(**dct))
@@ -30,28 +26,39 @@ def render_ex(node, model):
         print('***render', n.html())
 
     def func2(n, m, children):
-        print('func2', n.html(), children)
         v = True
         if n.attr('if'):
             attr = n.attr('if')[1:-1]
             v = getattr(m, attr)
-            print(v)
             if callable(v):
                 v = v()
         if v:
-            #if not n.children():
-            #    n.append(children)
-                if not children:
-                    if n.attr('r') or n.attr('r') == '':
-                        reactive(func, n, m, n.outerHTML())
-                else:
-                    for ch in children:
-                        render_ex(ch, m)
+            if not children:
+                if n.attr('r') or n.attr('r') == '':
+                    print('set helper', n)
+                    n.data('helper', reactive(func, n, m, n.outerHTML()))
+            else:
+                if n.attr('if'):
+                    if n.first() is None:
+                        n.append(children)
+                    elif n.first().attr('template'):
+                        n.first().removeAttr('template')
+                    else:
+                        return
+                for ch in children:
+                    render_ex(ch, m)
         else:
-            n.children().remove()
+            if n.first():
+                print('llego')
+                for ch in n.find('[r]'):
+                    print('       ', ch._html)
+                    if ch.data('helper'):
+                        print('llamo a reset')
+                        m.reset(ch.data('helper'))
+                print('hago remove')
+                n.first().remove()
 
     if node.attr('if'):
-        print('if true')
         reactive(func2, node, model, node.children())
     else:
         func2(node, model, node.children())

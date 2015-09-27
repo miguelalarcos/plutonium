@@ -7,6 +7,7 @@ from components.main.controller import render_ex
 from bs4 import BeautifulSoup
 from components.main.reactive import Model
 
+helpers = {}
 
 class A(Model):
     objects = {}
@@ -22,7 +23,8 @@ class Attribute(object):
 
 
 class Node(object):
-    def __init__(self, html):
+    def __init__(self, html, parent=None):
+        self.parent = parent
         self._html = html
         self.soup = BeautifulSoup(html, 'html.parser').div or BeautifulSoup(html, 'html.parser').span
         self.attributes = []
@@ -32,13 +34,44 @@ class Node(object):
     def __getitem__(self, item):
         return self
 
+    def data(self, key, value=None):
+        if value:
+            print('seteo', self.soup.attrs['id'])
+            helpers[self.soup.attrs['id']] = value
+        else:
+            try:
+                return helpers[self.soup.attrs['id']]
+            except KeyError:
+                print('return none')
+                return None
+
+    def find(self, attr):
+        if attr == '[r]':
+            return [Node(str(x), self) for x in self.soup.find_all() if x.name in ('div', 'span') and x.has_attr('r')]
+            #return self.soup.find_all(r="")
+        return []
+
+    def remove(self):
+        self.parent.soup.clear()
+
+    def first(self):
+        try:
+            return self.children()[0]
+        except IndexError:
+            return None
+
+    def append(self, nodes):
+        node = nodes[0]
+        node = BeautifulSoup(node._html, 'html.parser').div or BeautifulSoup(node._html, 'html.parser').span
+        self.soup.append(node)
+
     def html(self, value=None):
         if value is None:
             return self._html
         self._html = value
 
     def children(self):
-        return [Node(str(x)) for x in self.soup.children if x.name in ('div', 'span')]
+        return [Node(str(x), self) for x in self.soup.children if x.name in ('div', 'span')]
 
     def attr(self, attr, value=None):
         if value is None:
@@ -54,10 +87,22 @@ class Node(object):
     def outerHTML(self):
         return self._html
 
+    def removeAttr(self, attr):
+        self.attributes = [x for x in self.attributes if x.name != attr]
+
 
 def test_1():
-    node = Node("<div if='{z}'><span r>{x}</span><span r>{y}</span></div")
-    m = A(id=None, x=8, y=9, z=True)
+    node = Node("<div if='{z}'><span id='0' template=true><span id='1' r>{x}</span><span id='2' r>{y}</span></span></div>")
+    m = A(id=None, x=8, y=9, z=False)
     render_ex(node, m)
-    m.y=900
+    assert node.children() == []
+    m.y = 900
+    m.y = 901
+    m.z = True
+    assert node.children()[0].attr('id') == '0'
+    print('-'*50)
+    m.z = False
+    print('-'*50)
+    m.x = 1000
+    assert node.children() == []
     assert False

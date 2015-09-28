@@ -13,10 +13,7 @@ def render_ex(node, model, controller=None):
     if not model:
         return
 
-    print('           render ex', node, model)
-
     def render(n, m, template):
-        print('***render ini', m)
         if callable(m):
             m = m()
             print('m()=', m)
@@ -40,15 +37,13 @@ def render_ex(node, model, controller=None):
                 n.attr(item.name, ret)
             else:
                 n.attr(item.name, item.value.format(**dct))
-        print('***render', n.html())
+        print('***render', n, n.html())
 
     def helper(n, m, children):
-        print('         helper', n, m, children)
         fm = m
         if callable(m):
             m = m()
         v = True
-        print('mock node:', n, n.attr('if'))
         if n.attr('if'):
             attr = n.attr('if')[1:-1]
             print('attr', attr)
@@ -56,10 +51,8 @@ def render_ex(node, model, controller=None):
             if callable(v):
                 v = v()
         if v:
-            print('            children', children)
             if not children:
                 if n.attr('r') or n.attr('r') == '':
-                    print('          llego', fm)
                     n.data('helper', reactive(render, n, fm, n.outerHTML()))
             else:
                 if n.attr('if'):
@@ -217,7 +210,6 @@ class SelectedModelControllerRef(BaseController):
         self.selected = None
 
         def fselected(lista):
-            print('fselected', lista)
             s = None
             for m_ in lista:
                 if m_.selected:

@@ -130,6 +130,9 @@ def test_basic_render_ex():
     assert len(node.children()) == 1
     assert node.children()[0].attr('id') == '0'
     assert node.first().attr('template') is None
+    assert node.first().first().html() == '<span r="">8</span>'
+    assert node.first().children()[-1].html() == '<span r="">901</span>'
+    assert m._dirty == set(['x', 'y', 'z'])
     m.z = False
     assert node.children() == []
     m.x = 1000

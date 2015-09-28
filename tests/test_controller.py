@@ -78,7 +78,6 @@ def test_index_in_list_second_key_after_2():
 def test_new_append(monkeypatch):
     jq = MagicMock()
     jq().attr.return_value = False
-    print('nodo principal', jq())
     jq.find().__iter__.return_value = []
     append = jq().append
 
@@ -110,8 +109,9 @@ def test_new_controller_limit_is_0(monkeypatch):
     assert controller_.models == []
 
 
-def _test_new__before(monkeypatch):
+def test_new__before(monkeypatch):
     jq = MagicMock()
+    jq().attr.return_value = False
     jq.find().__iter__.return_value = []
     before = jq().children().before
 
@@ -128,8 +128,9 @@ def _test_new__before(monkeypatch):
     assert controller_.models == [m2, m]
 
 
-def _test_new__after(monkeypatch):
+def test_new__after(monkeypatch):
     jq = MagicMock()
+    jq().attr.return_value = False
     jq.find().__iter__.return_value = []
     after = jq().children().after
 
@@ -291,3 +292,139 @@ def test_SelectedModelControllerRef(monkeypatch):
     c.test(m3, {'x': -1, 'y': 1, '__skip__': '0'})
     assert cr.selected is None
 
+
+def test_render_model_selection_selected(monkeypatch):
+    node = Node("<div id='cc'><span template=true class='template'><span class='{x} hola' r>{x}</span><span r>{y}</span></span></div>")
+    node2 = Node("<div id='c'><span class='template' template=true><span class='{x} hola' r>{x}</span><span r>{y}</span></span>")
+
+    def jq(arg):
+        print('side effect', arg)
+        if arg == '#cc':
+            return node
+        if arg == '#c':
+            return node2
+        if arg == '#cc .template':
+            return node.first()
+        if type(arg) == str:
+            return Node(arg)
+
+        return arg
+
+    monkeypatch.setattr(controller, 'jq', jq)
+
+    def selection(lista):
+        s = None
+        for m_ in lista:
+            if m_.selected:
+                s = m_
+        if s:
+            return s
+        else:
+            return None #A(id=None, x=0, y=0)
+
+    def side_effect(arg):
+        if arg == '#cr':
+            return node
+        if type(arg) is str:
+            return node
+        return arg
+
+    filter = Filter({'__collection__': 'A', '__filter__': 'my_filter',
+                                    'x': 0, 'y': 1000, '__key__': [('x', 'desc'), ('y', 'desc')], '__limit__': 2,
+                                    '__skip__': 0})
+
+
+    cc = controller.Controller('cc', filter=filter)
+    jq.side_effect = side_effect
+    c = controller.SelectedModelControllerRef('c', cc, selection_func=selection)
+
+    m = A(id=None, x=8, y=9)
+
+    cc.test(m, {'x': 8, 'y': 9, '__skip__': '0'})
+    #consume()
+
+    m.selected = True
+    #consume()
+
+    assert c.selected == m
+
+    m2 = A(id=None, x=801, y=19)
+    cc.test(m2, {'x': 801, 'y': 19, '__skip__': '0'})
+    m.selected = False
+    m2.selected = True
+    #consume()
+    assert c.selected == m2
+
+    m3 = A(id=None, x=1, y=1)
+    cc.test(m3, {'x': 1, 'y': 1, '__skip__': '0'})
+    m2.selected = False
+    m3.selected = True
+    #consume()
+    assert c.selected == m3
+    m3.x = -1
+    cc.test(m3, {'x': -1, 'y': 1, '__skip__': '0'})
+    assert c.selected is None
+
+
+def test_render_model_selection(monkeypatch):
+    node = Node("<div id='cc'><span template=true class='template'><span class='{x} hola' r>{x}</span><span r>{y}</span></span></div>")
+    node2 = Node("<div id='c'><span class='template' template=true><span class='{x} hola' r>{x}</span><span r>{y}</span></span>")
+
+    def jq(arg):
+        print('side effect', arg)
+        if arg == '#cc':
+            return node
+        if arg == '#c':
+            return node2
+        if arg == '#cc .template':
+            return node.first()
+        if type(arg) == str:
+            return Node(arg)
+
+        return arg
+
+    monkeypatch.setattr(controller, 'jq', jq)
+
+    def selection(lista):
+        if len(lista) > 0:
+            return lista[0]
+        else:
+            return A(id=None, x=0, y=0)
+
+    def side_effect(arg):
+        if arg == '#cr':
+            return node
+        if type(arg) is str:
+            return node
+        return arg
+
+    m = A(id=None, x=8, y=9)
+
+    filter = Filter({'__collection__': 'A', '__filter__': 'my_filter',
+                                    'x': 0, 'y': 1000, '__key__': [('x', 'desc'), ('y', 'desc')], '__limit__': 2,
+                                    '__skip__': 0})
+
+    cc = controller.Controller('cc', filter=filter)
+    jq.side_effect = side_effect
+    c = controller.SelectedModelControllerRef('c', cc, selection)
+
+    jq.side_effect = None
+
+    cc.test(m, {'x': 8, 'y': 9, '__skip__': '0'})
+
+    assert node2.first().first().html() == '<span class="8 hola" r="">8</span>'
+    m.x = 800
+    assert node2.first().first().html() == '<span class="800 hola" r="">800</span>'
+
+    m2 = A(id=None, x=801, y=19)
+    cc.test(m2, {'x': 801, 'y': 19, '__skip__': '0'})
+    assert c.selected == m2
+    assert node2.first().first().html() == '<span class="801 hola" r="">801</span>'
+
+    m2.y = 20
+    assert node2.first().children()[-1].html() == '<span r="">20</span>'
+
+    cc.test(m2, {'x': 1001, 'y': 20, '__skip__': '0'})
+
+    assert c.selected == m
+    assert node2.first().first().html() == '<span class="800 hola" r="">800</span>'

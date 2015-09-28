@@ -1,7 +1,7 @@
 def index_by_id(models, id):
     index = None
     for item in models:
-        if item.__getitem__:
+        if type(item) == dict:
             v = item['id']
         else:
             v = getattr(item, 'id')
@@ -20,7 +20,7 @@ def compare(a, b, key, order=1):
         order = 1
     if order == 'desc':
         order = -1
-    if a.__getitem__:
+    if type(a) == dict:
         v_a = a[key]
         v_b = b[key]
     else:

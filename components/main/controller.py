@@ -7,6 +7,7 @@ from components.main.reactive import reactive, get_current_call, execute, consum
 import re
 import json
 from components.lib.filter_mongo import filters
+from components.lib.utils import index_by_id, compare, index_in_list
 
 
 def render_ex(node, model, controller=None):
@@ -89,7 +90,7 @@ def render_ex(node, model, controller=None):
         helper(node, model, children_) # node.children())
 
 
-def render(model, node, template): # ver si puedo quitar el argumento template y sustituirlo por node.outerHTML
+def _render(model, node, template): # ver si puedo quitar el argumento template y sustituirlo por node.outerHTML
     dct = {}
     attrs = re.findall('\{[a-zA-Z_0-9]+\}', template)
     for attr in attrs:
@@ -105,22 +106,9 @@ def render(model, node, template): # ver si puedo quitar el argumento template y
         node.attr(item.name, item.value.format(**dct))
 
 
-def makeDIV(id, model, func, template, controller=None):
+def makeDIV(model, template, controller=None):
     node = jq(template)  # ojo el template original debe llevar reactive_id='{id}'
     render_ex(node, model, controller)
-    return node
-    node.removeClass('template')
-    for n in node.find("[r]"):
-        n_ = jq(n)
-        on_click = n_.attr('on-click')
-        if on_click:
-            if hasattr(model, on_click):
-                method = getattr(model, on_click)
-                n_.click(method)
-            else:
-                method = getattr(controller, on_click)
-                n_.click(lambda: method(model))
-        reactive(func, model, n_, n_.outerHTML())
     return node
 
 
@@ -144,63 +132,20 @@ class BaseController(object):
             self.ws.send(json.dumps(filter.update(self.filter_json)))
 
     def indexById(self, id):
-        index = 0
-        for item in self.models:
-            if item.id == id:
-                break
-            index += 1
-        return index
+        return index_by_id(self.models, id)
 
     @staticmethod
     def compare(a, b, key, order=1):
-        if order == 'asc':
-            order = 1
-        if order == 'desc':
-            order = -1
-        v_a = getattr(a, key)
-        v_b = getattr(b, key)
-        if v_a == v_b:
-            return 0
-        if v_a > v_b:
-            if order == -1:
-                return 1
-            else:
-                return -1
-        if order == -1:
-            return -1
-        else:
-            return 1
+        return compare(a, b, key, order)
 
     def indexInList(self, model):
-        if self.models == []:
+        ret = index_in_list(self.models, self.key, model)
+        if ret == 0 and self.models == []:
             return (0, 'append')
-
-        index = 0
-
-        keys = self.key[:]
-        key, order = keys.pop(0)
-        flag = False
-        for item in self.models:
-            while True:
-                ret = Controller.compare(model, item, key, order)
-                if ret == 1:
-                    flag = True
-                    break
-                if ret == 0:
-                    if len(keys):
-                        key, order = keys.pop(0)
-                    else:
-                        flag = True
-                        break
-                else:
-                    break
-            if flag:
-                break
-            index += 1
-        if index == 0:
-            return (index, 'before', self.models[0].id)
+        if ret == 0:
+            return (0, 'before', self.models[0].id)
         else:
-            return (index, 'after', self.models[index-1].id)
+            return (ret, 'after', self.models[ret-1].id)
 
 
 class SelectedModelControllerRef(BaseController):
@@ -224,18 +169,8 @@ class SelectedModelControllerRef(BaseController):
             self.selected = model  #
             return model
 
-            #if model:
-            #    render(model, node, template)
-
         self.node = jq('#'+self.name)
         render_ex(self.node, f)
-        #for n in self.node.find('[r]'):
-        #    n_ = jq(n)
-        #    on_click = n_.attr('on-click')
-        #    if on_click:
-        #        method = lambda: getattr(self.selected, on_click)
-        #        n_.click(method)
-        #    reactive(f, self.ref, n_, n_.outerHTML())
 
 
 class Controller(BaseController):
@@ -258,7 +193,6 @@ class Controller(BaseController):
 
         self.node = jq('#'+self.name)
         self.node.id = self.node.attr('id')
-        self.func = render
         self._dep = []
         self._touch = 0
         BaseController.controllers[self.name] = self
@@ -295,13 +229,9 @@ class Controller(BaseController):
     def test_filter(self, ini):
         if len(self.models) > self.limit:
             if ini != self.models[0].id:
-                #self.out(self.models[0])
-                #self.touch += 1
                 self.models = self.models[1:]
                 return False
             else:
-                #self.out(self.models[-1])
-                #self.touch += 1
                 self.models = self.models[:-1]
                 return False
         return True
@@ -344,15 +274,15 @@ class Controller(BaseController):
 
         action = tupla[1]
         if action == 'append':
-            node = makeDIV(model.id, model, self.func, jq('#'+str(self.node.id)+' .template').outerHTML(), self)
+            node = makeDIV(model, jq('#'+str(self.node.id)+' .template').outerHTML(), self)
             ref = jq('#'+str(self.node.id))
             ref.append(node)
         elif action == 'before':
-            node = makeDIV(model.id, model, self.func, jq('#'+str(self.node.id)+' .template').outerHTML(), self)
+            node = makeDIV(model, jq('#'+str(self.node.id)+' .template').outerHTML(), self)
             ref = jq('#'+str(self.node.id)).children("[reactive_id='"+str(tupla[2])+"']")
             ref.before(node)
         elif action == 'after':
-            node = makeDIV(model.id, model, self.func, jq('#'+str(self.node.id)+' .template').outerHTML(), self)
+            node = makeDIV(model, jq('#'+str(self.node.id)+' .template').outerHTML(), self)
             ref = jq('#'+str(self.node.id)).children("[reactive_id='"+str(tupla[2])+"']")
             ref.after(node)
 

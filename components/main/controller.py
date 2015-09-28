@@ -90,22 +90,6 @@ def render_ex(node, model, controller=None):
         helper(node, model, children_) # node.children())
 
 
-def _render(model, node, template): # ver si puedo quitar el argumento template y sustituirlo por node.outerHTML
-    dct = {}
-    attrs = re.findall('\{[a-zA-Z_0-9]+\}', template)
-    for attr in attrs:
-        attr = attr[1:-1]
-        v = getattr(model, attr)
-        print(attr, v, model)
-        if callable(v):
-            v = v()
-        dct[attr] = v
-
-    node.html(node.html().format(**dct))
-    for item in node[0].attributes:
-        node.attr(item.name, item.value.format(**dct))
-
-
 def makeDIV(model, template, controller=None):
     node = jq(template)  # ojo el template original debe llevar reactive_id='{id}'
     render_ex(node, model, controller)
@@ -175,7 +159,8 @@ class SelectedModelControllerRef(BaseController):
 
 class Controller(BaseController):
 
-    def __init__(self, name, filter):
+    def __init__(self, name, filter_):
+        filter = filter_
         self.filter_object = filter
         self.limit = filter.limit
         self.filter_json = filter.raw_filter.copy()

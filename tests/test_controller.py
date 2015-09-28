@@ -40,7 +40,7 @@ m = A(id='2', x=0, y=1)
 def test_index_in_list_empty(monkeypatch):
     jq = MagicMock()
     monkeypatch.setattr(controller, 'jq', jq)
-    c = Controller(name='', filter=filter)
+    c = Controller(name='', filter_=filter)
     c.models = []
     ret = c.indexInList(m)
     assert ret == (0, 'append')
@@ -49,7 +49,7 @@ def test_index_in_list_empty(monkeypatch):
 def test_index_in_list_before(monkeypatch):
     jq = MagicMock()
     monkeypatch.setattr(controller, 'jq', jq)
-    c = Controller(name='', filter=filter)
+    c = Controller(name='', filter_=filter)
     c.models = [m0]
     m = A(id='2', x=1, y=1)
     ret = c.indexInList(m)
@@ -59,7 +59,7 @@ def test_index_in_list_before(monkeypatch):
 def test_index_in_list_before0(monkeypatch):
     jq = MagicMock()
     monkeypatch.setattr(controller, 'jq', jq)
-    c = Controller(name='', filter=filter)
+    c = Controller(name='', filter_=filter)
     c.models = [m0]
     m = A(id='2', x=0, y=3)
     ret = c.indexInList(m)
@@ -69,7 +69,7 @@ def test_index_in_list_before0(monkeypatch):
 def test_index_in_list_after(monkeypatch):
     jq = MagicMock()
     monkeypatch.setattr(controller, 'jq', jq)
-    c = Controller(name='', filter=filter)
+    c = Controller(name='', filter_=filter)
     c.models = [m0]
     m = A(id='2', x=-1, y=3)
     ret = c.indexInList(m)
@@ -79,7 +79,7 @@ def test_index_in_list_after(monkeypatch):
 def test_index_in_list_second_key_after_2(monkeypatch):
     jq = MagicMock()
     monkeypatch.setattr(controller, 'jq', jq)
-    c = Controller(name='', filter=filter)
+    c = Controller(name='', filter_=filter)
 
     c.models = [m0, m1]
     ret = c.indexInList(m)
@@ -94,7 +94,7 @@ def test_new_append(monkeypatch):
 
     monkeypatch.setattr(controller, 'jq', jq)
     #controller.jq = jq
-    controller_ = Controller(name='', filter=filter)
+    controller_ = Controller(name='', filter_=filter)
     m = A(id='2', x=0, y=3)
     controller_.new(m, '0')
     assert append.called
@@ -109,7 +109,7 @@ def test_new_controller_limit_is_0(monkeypatch):
 
     #controller.jq = jq
     monkeypatch.setattr(controller, 'jq', jq)
-    controller_ = Controller(name='', filter=filter)
+    controller_ = Controller(name='', filter_=filter)
     m = A(id='2', x=0, y=3)
     controller_.limit = 0
     controller_.new(m, '0')
@@ -128,7 +128,7 @@ def test_new__before(monkeypatch):
 
     #controller.jq = jq
     monkeypatch.setattr(controller, 'jq', jq)
-    controller_ = Controller(name='', filter=filter)
+    controller_ = Controller(name='', filter_=filter)
     m = A(id='2', x=0, y=3)
     controller_.models = [m]
     m2 = A(id='3', x=0, y=3)
@@ -147,7 +147,7 @@ def test_new__after(monkeypatch):
 
     #controller.jq = jq
     monkeypatch.setattr(controller, 'jq', jq)
-    controller_ = Controller(name='', filter=filter)
+    controller_ = Controller(name='', filter_=filter)
     m = A(id='2', x=0, y=3)
     controller_.models = [m]
     m2 = A(id='3', x=0, y=2)
@@ -163,7 +163,7 @@ def test_out_not_first(monkeypatch):
 
     #controller.jq = jq
     monkeypatch.setattr(controller, 'jq', jq)
-    controller_ = Controller(name='', filter=filter)
+    controller_ = Controller(name='', filter_=filter)
     m = A(id='2', x=0, y=3)
     controller_.models = [m]
 
@@ -176,7 +176,7 @@ def test_out_not_first_more_than_one(monkeypatch):
 
     #controller.jq = jq
     monkeypatch.setattr(controller, 'jq', jq)
-    controller_ = Controller(name='', filter=filter)
+    controller_ = Controller(name='', filter_=filter)
     m = A(id='2', x=0, y=3)
     m2 = A(id='3', x=0, y=3)
     controller_.models = [m, m2]
@@ -191,7 +191,7 @@ def test_modify_when_move_to__after(monkeypatch):
 
     #controller.jq = jq
     monkeypatch.setattr(controller, 'jq', jq)
-    controller_ = Controller(name='', filter=filter)
+    controller_ = Controller(name='', filter_=filter)
     m = A(id='2', x=0, y=3)
     m2 = A(id='3', x=0, y=2)
     controller_.models = [m, m2]
@@ -212,7 +212,7 @@ def test_modify_when_move_to__before(monkeypatch):
 
     #controller.jq = jq
     monkeypatch.setattr(controller, 'jq', jq)
-    controller_ = Controller(name='', filter=filter)
+    controller_ = Controller(name='', filter_=filter)
     m = A(id='2', x=0, y=3)
     m2 = A(id='3', x=0, y=2)
     controller_.models = [m, m2]
@@ -278,7 +278,7 @@ def test_SelectedModelControllerRef(monkeypatch):
                                     'x': 0, 'y': 1000, '__key__': [('x', 'desc'), ('y', 'desc')], '__limit__': 2,
                                     '__skip__': 0})
 
-    c = controller.Controller('c', filter=filter)
+    c = controller.Controller('c', filter_=filter)
     cr = controller.SelectedModelControllerRef('cr', c)
 
     c.test(m, {'x': 8, 'y': 9, '__skip__': '0'})
@@ -344,8 +344,7 @@ def test_render_model_selection_selected(monkeypatch):
                                     'x': 0, 'y': 1000, '__key__': [('x', 'desc'), ('y', 'desc')], '__limit__': 2,
                                     '__skip__': 0})
 
-
-    cc = controller.Controller('cc', filter=filter)
+    cc = controller.Controller('cc', filter_=filter)
     jq.side_effect = side_effect
     c = controller.SelectedModelControllerRef('c', cc, selection_func=selection)
 
@@ -415,7 +414,7 @@ def test_render_model_selection(monkeypatch):
                                     'x': 0, 'y': 1000, '__key__': [('x', 'desc'), ('y', 'desc')], '__limit__': 2,
                                     '__skip__': 0})
 
-    cc = controller.Controller('cc', filter=filter)
+    cc = controller.Controller('cc', filter_=filter)
     jq.side_effect = side_effect
     c = controller.SelectedModelControllerRef('c', cc, selection)
 

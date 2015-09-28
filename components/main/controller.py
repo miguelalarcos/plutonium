@@ -10,7 +10,18 @@ from components.lib.filter_mongo import filters
 
 
 def render_ex(node, model, controller=None):
+    if not model:
+        return
+
+    print('           render ex', node, model)
+
     def render(n, m, template):
+        print('***render ini', m)
+        if callable(m):
+            m = m()
+            print('m()=', m)
+        if not m:
+            return
         dct = {}
         attrs = re.findall('\{[a-zA-Z_0-9]+\}', template)
         for attr in attrs:
@@ -22,22 +33,34 @@ def render_ex(node, model, controller=None):
 
         n.html(template.format(**dct))
         for item in n[0].attributes:
-            n.attr(item.name, item.value.format(**dct))
+            if type(item.value) is list:
+                ret = []
+                for it in item.value:
+                    ret.append(it.format(**dct))
+                n.attr(item.name, ret)
+            else:
+                n.attr(item.name, item.value.format(**dct))
         print('***render', n.html())
 
     def helper(n, m, children):
+        print('         helper', n, m, children)
+        fm = m
         if callable(m):
             m = m()
         v = True
+        print('mock node:', n, n.attr('if'))
         if n.attr('if'):
             attr = n.attr('if')[1:-1]
+            print('attr', attr)
             v = getattr(m, attr)
             if callable(v):
                 v = v()
         if v:
+            print('            children', children)
             if not children:
                 if n.attr('r') or n.attr('r') == '':
-                    n.data('helper', reactive(render, n, m, n.outerHTML()))
+                    print('          llego', fm)
+                    n.data('helper', reactive(render, n, fm, n.outerHTML()))
             else:
                 if n.attr('if'):
                     if n.first() is None:
@@ -56,7 +79,7 @@ def render_ex(node, model, controller=None):
                         else:
                             method = getattr(controller, on_click)
                         ch.click(method)
-                    render_ex(ch, m)
+                    render_ex(ch, fm)
         else:
             if n.first():
                 for ch in n.find('[r]'):
@@ -194,6 +217,7 @@ class SelectedModelControllerRef(BaseController):
         self.selected = None
 
         def fselected(lista):
+            print('fselected', lista)
             s = None
             for m_ in lista:
                 if m_.selected:

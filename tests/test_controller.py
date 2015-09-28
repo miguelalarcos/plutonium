@@ -8,7 +8,7 @@ from components.main import controller
 from components.main.controller import Controller
 from components.main.reactive import Model
 from collections import namedtuple
-
+from utils import Node
 
 
 class DIV(object):
@@ -75,12 +75,15 @@ def test_index_in_list_second_key_after_2():
     assert ret == (2, 'after', '1')
 
 
-def test_new_append():
+def test_new_append(monkeypatch):
     jq = MagicMock()
+    jq().attr.return_value = False
+    print('nodo principal', jq())
     jq.find().__iter__.return_value = []
     append = jq().append
 
-    controller.jq = jq
+    monkeypatch.setattr(controller, 'jq', jq)
+    #controller.jq = jq
     controller_ = Controller(name='', filter=filter)
     m = A(id='2', x=0, y=3)
     controller_.new(m, '0')
@@ -88,13 +91,14 @@ def test_new_append():
     assert controller_.models == [m]
 
 
-def test_new_controller_limit_is_0():
+def test_new_controller_limit_is_0(monkeypatch):
     jq = MagicMock()
     jq.find().__iter__.return_value = []
     append = jq().append
     remove = jq().children().remove
 
-    controller.jq = jq
+    #controller.jq = jq
+    monkeypatch.setattr(controller, 'jq', jq)
     controller_ = Controller(name='', filter=filter)
     m = A(id='2', x=0, y=3)
     controller_.limit = 0
@@ -106,12 +110,13 @@ def test_new_controller_limit_is_0():
     assert controller_.models == []
 
 
-def test_new__before():
+def _test_new__before(monkeypatch):
     jq = MagicMock()
     jq.find().__iter__.return_value = []
     before = jq().children().before
 
-    controller.jq = jq
+    #controller.jq = jq
+    monkeypatch.setattr(controller, 'jq', jq)
     controller_ = Controller(name='', filter=filter)
     m = A(id='2', x=0, y=3)
     controller_.models = [m]
@@ -123,12 +128,13 @@ def test_new__before():
     assert controller_.models == [m2, m]
 
 
-def test_new__after():
+def _test_new__after(monkeypatch):
     jq = MagicMock()
     jq.find().__iter__.return_value = []
     after = jq().children().after
 
-    controller.jq = jq
+    #controller.jq = jq
+    monkeypatch.setattr(controller, 'jq', jq)
     controller_ = Controller(name='', filter=filter)
     m = A(id='2', x=0, y=3)
     controller_.models = [m]
@@ -140,10 +146,11 @@ def test_new__after():
     assert controller_.models == [m, m2]
 
 
-def test_out_not_first():
+def test_out_not_first(monkeypatch):
     jq = Mock()
 
-    controller.jq = jq
+    #controller.jq = jq
+    monkeypatch.setattr(controller, 'jq', jq)
     controller_ = Controller(name='', filter=filter)
     m = A(id='2', x=0, y=3)
     controller_.models = [m]
@@ -152,10 +159,11 @@ def test_out_not_first():
     assert controller_.models == []
 
 
-def test_out_not_first_more_than_one():
+def test_out_not_first_more_than_one(monkeypatch):
     jq = Mock()
 
-    controller.jq = jq
+    #controller.jq = jq
+    monkeypatch.setattr(controller, 'jq', jq)
     controller_ = Controller(name='', filter=filter)
     m = A(id='2', x=0, y=3)
     m2 = A(id='3', x=0, y=3)
@@ -165,11 +173,12 @@ def test_out_not_first_more_than_one():
     assert controller_.models == [m2]
 
 
-def test_modify_when_move_to__after():
+def test_modify_when_move_to__after(monkeypatch):
     jq = Mock()
     children = jq().children
 
-    controller.jq = jq
+    #controller.jq = jq
+    monkeypatch.setattr(controller, 'jq', jq)
     controller_ = Controller(name='', filter=filter)
     m = A(id='2', x=0, y=3)
     m2 = A(id='3', x=0, y=2)
@@ -185,11 +194,12 @@ def test_modify_when_move_to__after():
     assert controller_.models == [m2, m]
 
 
-def test_modify_when_move_to__before():
+def test_modify_when_move_to__before(monkeypatch):
     jq = Mock()
     children = jq().children
 
-    controller.jq = jq
+    #controller.jq = jq
+    monkeypatch.setattr(controller, 'jq', jq)
     controller_ = Controller(name='', filter=filter)
     m = A(id='2', x=0, y=3)
     m2 = A(id='3', x=0, y=2)
@@ -207,32 +217,50 @@ def test_modify_when_move_to__before():
 # ####################
 
 
-def test_SelectedModelControllerRef():
-    node = MagicMock()
-    node1 = MagicMock()
-    Attribute = namedtuple('Attribute', ['name', 'value'])
-    node1[0].attributes = [Attribute('class', '{x}')]
-    node2 = MagicMock()
-    node2[0].attributes = []
-    jq = MagicMock()
-    controller.jq = jq
+def test_SelectedModelControllerRef(monkeypatch):
+    #node = MagicMock()
+    #node1 = MagicMock()
+    #Attribute = namedtuple('Attribute', ['name', 'value'])
+    #node1[0].attributes = [Attribute('class', '{x}')]
+    #node2 = MagicMock()
+    #node2[0].attributes = []
+    #jq = MagicMock()
+    #controller.jq = jq
 
-    node.find().__iter__.return_value = [node1, node2]
-    node1.outerHTML.return_value = '<span r class="{x}">{x}</span>'
-    node1.html.return_value = '{x}'
-    node2.outerHTML.return_value = '<span r>{y}</span>'
-    node2.html.return_value = '{y}'
+    #node.find().__iter__.return_value = [node1, node2]
+    #node1.outerHTML.return_value = '<span r class="{x}">{x}</span>'
+    #node1.html.return_value = '{x}'
+    #node2.outerHTML.return_value = '<span r>{y}</span>'
+    #node2.html.return_value = '{y}'
 
-    def side_effect(arg):
-        if type(arg) is Mock:
-            return arg
-        if type(arg) is str:
+    #def side_effect(arg):
+    #    return arg
+    #jq = MagicMock()
+
+
+
+
+    node = Node("<div id='c'><span template=true class='template'><span class='{x} hola' r>{x}</span><span r>{y}</span></span></div>")
+    node2 = Node("<div id='cr'><span class='template' template=true><span class='{x} hola' r>{x}</span><span r>{y}</span></span>")
+
+    def jq(arg):
+        print('side effect', arg)
+        if arg == '#c':
             return node
+        if arg == '#cr':
+            return node2
+        if arg == '#c .template':
+            return node.first() #Node("<span template=true class='template'><span class='{x} hola' r>{x}</span><span r>{y}</span></span>")
+        if type(arg) == str:
+            return Node(arg)
+        print('retorno', arg)
         return arg
-
+    #jq.side_effect = side_effect
+    #controller.jq = jq
+    monkeypatch.setattr(controller, 'jq', jq)
 
     m = A(id=None, x=8, y=9)
-    jq.side_effect = side_effect
+    #jq.side_effect = side_effect
 
     filter = Filter({'__collection__': 'A', '__filter__': 'my_filter',
                                     'x': 0, 'y': 1000, '__key__': [('x', 'desc'), ('y', 'desc')], '__limit__': 2,

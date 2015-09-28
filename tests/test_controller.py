@@ -37,41 +37,52 @@ m1 = A(id='1', x=0, y=2)
 m = A(id='2', x=0, y=1)
 
 
-def test_index_in_list_empty():
-    controller = Controller(name='', filter=filter)
-    controller.models = []
-    ret = controller.indexInList(m)
+def test_index_in_list_empty(monkeypatch):
+    jq = MagicMock()
+    monkeypatch.setattr(controller, 'jq', jq)
+    c = Controller(name='', filter=filter)
+    c.models = []
+    ret = c.indexInList(m)
     assert ret == (0, 'append')
 
 
-def test_index_in_list_before():
-    controller = Controller(name='', filter=filter)
-    controller.models = [m0]
+def test_index_in_list_before(monkeypatch):
+    jq = MagicMock()
+    monkeypatch.setattr(controller, 'jq', jq)
+    c = Controller(name='', filter=filter)
+    c.models = [m0]
     m = A(id='2', x=1, y=1)
-    ret = controller.indexInList(m)
+    ret = c.indexInList(m)
     assert ret == (0, 'before', '0')
 
 
-def test_index_in_list_before0():
-    controller = Controller(name='', filter=filter)
-    controller.models = [m0]
+def test_index_in_list_before0(monkeypatch):
+    jq = MagicMock()
+    monkeypatch.setattr(controller, 'jq', jq)
+    c = Controller(name='', filter=filter)
+    c.models = [m0]
     m = A(id='2', x=0, y=3)
-    ret = controller.indexInList(m)
+    ret = c.indexInList(m)
     assert ret == (0, 'before', '0')
 
 
-def test_index_in_list_after():
-    controller = Controller(name='', filter=filter)
-    controller.models = [m0]
+def test_index_in_list_after(monkeypatch):
+    jq = MagicMock()
+    monkeypatch.setattr(controller, 'jq', jq)
+    c = Controller(name='', filter=filter)
+    c.models = [m0]
     m = A(id='2', x=-1, y=3)
-    ret = controller.indexInList(m)
+    ret = c.indexInList(m)
     assert ret == (1, 'after', '0')
 
 
-def test_index_in_list_second_key_after_2():
-    controller = Controller(name='', filter=filter)
-    controller.models = [m0, m1]
-    ret = controller.indexInList(m)
+def test_index_in_list_second_key_after_2(monkeypatch):
+    jq = MagicMock()
+    monkeypatch.setattr(controller, 'jq', jq)
+    c = Controller(name='', filter=filter)
+
+    c.models = [m0, m1]
+    ret = c.indexInList(m)
     assert ret == (2, 'after', '1')
 
 

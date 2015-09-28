@@ -19,7 +19,7 @@ def on_message(evt):
         collection = data.pop('__collection__')
         filter_name = data.pop('__filter__')
         raw = data.copy()
-        data.pop('__skip__')
+        #data.pop('__skip__')
         klass = registered_models[collection]
         print('buscamos si ya tenemos el objeto con id', data['id'])
         try:

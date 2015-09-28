@@ -5,7 +5,7 @@ def filter(collection):
     def helper1(func):
         def helper2(**kw):
             ret = func(**kw)
-            ret.update({'__collection__': collection})
+            #ret.update({'__collection__': collection})
             return ret
         filters[func.__name__] = helper2
         return helper2
@@ -15,9 +15,9 @@ def filter(collection):
 class Filter(object):
     def __init__(self, item=None, **kw):
         if item:
-            self.name = item.pop('__filter__')
             self.stop = item.pop('__stop__', None)
             self.raw_filter = item.copy()
+            self.name = item.pop('__filter__')
             self.full_name = str([self.name] + sorted(self.raw_filter.items()))
             self.key = item.pop('__key__', None)
             self.limit = item.pop('__limit__', None)
@@ -26,9 +26,9 @@ class Filter(object):
             self.filter = filters[self.name](**item)
         else:
             item = kw
-            self.name = item.pop('filter')
             self.stop = item.pop('stop', None)
             self.raw_filter = item.copy()
+            self.name = item.pop('filter')
             self.full_name = str([self.name] + sorted(self.raw_filter.items()))
             self.key = item.pop('key', None)
             self.limit = item.pop('limit', None)

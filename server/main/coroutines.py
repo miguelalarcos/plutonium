@@ -51,6 +51,7 @@ def do_find(filt, projection=None): #
         document['__filter__'] = filt.full_name
         document['id'] = document['_id']
         del document['_id']
+    print('do find', ret)
     return ret
 
 
@@ -59,8 +60,8 @@ def handle_filter(item):
     client_socket = item.pop('__client__')
     client = Client.clients[client_socket]
 
-    #name = item.pop('__filter__')
-    filt = client.add_filter(Filter(item))
+    filt = Filter(item)
+    client.add_filter(filt)
 
     ret = yield do_find(filt)
     if len(ret) > 0:
@@ -135,6 +136,7 @@ def broadcast(item):
                 continue
             after = yield do_find(filt, {'_id': 1})
             after = [x['id'] for x in after]
+            print('after', after)
             to_send = None
             if item['id'] in after:
                 to_send = item
@@ -153,6 +155,7 @@ def broadcast(item):
             if to_send:
                 to_send['__filter__'] = filt.full_name
                 to_send['__skip__'] = after[0]
+                print('to send', to_send)
                 yield q_send.put((client.socket, to_send))
 
 

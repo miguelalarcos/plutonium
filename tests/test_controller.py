@@ -279,7 +279,14 @@ def test_SelectedModelControllerRef(monkeypatch):
                                     '__skip__': 0})
 
     c = controller.Controller('c', filter_=filter)
-    cr = controller.SelectedModelControllerRef('cr', c)
+    def selection(lista):
+        s = None
+        for m_ in lista:
+            if m_.selected:
+                s = m_
+        return s
+
+    cr = controller.SelectedModelControllerRef('cr', c, selection)
 
     c.test(m, {'x': 8, 'y': 9, '__skip__': '0'})
     assert cr.selected is None
@@ -408,17 +415,17 @@ def test_render_model_selection(monkeypatch):
             return node
         return arg
 
-    m = A(id=None, x=8, y=9)
+    m = A(id='0', x=8, y=9)
 
     filter = Filter({'__collection__': 'A', '__filter__': 'my_filter',
-                                    'x': 0, 'y': 1000, '__key__': [('x', 'desc'), ('y', 'desc')], '__limit__': 2,
+                                    'x': 0, 'y': 1000, '__key__': [('x', 'desc'), ('y', 'desc')], '__limit__': 1,
                                     '__skip__': 0})
 
     cc = controller.Controller('cc', filter_=filter)
-    jq.side_effect = side_effect
+    #jq.side_effect = side_effect
     c = controller.SelectedModelControllerRef('c', cc, selection)
 
-    jq.side_effect = None
+    #jq.side_effect = None
 
     cc.test(m, {'x': 8, 'y': 9, '__skip__': '0'})
 
@@ -426,15 +433,15 @@ def test_render_model_selection(monkeypatch):
     m.x = 800
     assert node2.first().first().html() == '<span class="800 hola" r="">800</span>'
 
-    m2 = A(id=None, x=801, y=19)
-    cc.test(m2, {'x': 801, 'y': 19, '__skip__': '0'})
+    m2 = A(id='2', x=801, y=19)
+    cc.test(m2, {'x': 801, 'y': 19, '__skip__': '2'})
     assert c.selected == m2
     assert node2.first().first().html() == '<span class="801 hola" r="">801</span>'
 
     m2.y = 20
     assert node2.first().children()[-1].html() == '<span r="">20</span>'
 
-    cc.test(m2, {'x': 1001, 'y': 20, '__skip__': '0'})
-
+    cc.test(m, {'x': 800, 'y': 20, '__skip__': '0'})
+    assert len(cc.models) == 1
     assert c.selected == m
     assert node2.first().first().html() == '<span class="800 hola" r="">800</span>'

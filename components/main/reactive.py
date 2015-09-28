@@ -76,10 +76,11 @@ class Model(object):
             id = str(random.random())
         self.__dict__['_dep'] = []
         self.__dict__['_dirty'] = set()
-        self.__dict__['id'] = id
+        self.__dict__['id'] = id   ################
         self.__dict__['__collection__'] = self.__class__.__name__
 
         def set_values():
+            #setattr(self, 'id', id) ###########
             for k, v in kw.items():
                 if k in ('__deleted__', '__collection__'):
                     continue
@@ -109,6 +110,9 @@ class Model(object):
         print ('*** sending data', data)
         data = datetimeargs2epoch(data)
         Model.ws.send(json.dumps(data))
+
+    def __call__(self, *args, **kwargs):
+        return self
 
     def reset(self, func):
         ret = []

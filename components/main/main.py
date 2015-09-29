@@ -48,16 +48,16 @@ def send_data():
     if not sent_initial_data:
         BaseController.subscribe_all()
         sent_initial_data = True
-    try:
-        if random.random() < 0.5:
-            obj = A(make_id(), x=random.randint(0, 10))
-        else:
-            obj = random.choice(list(A.objects.values()))
-            obj.x = random.randint(0, 10)
-    except Exception as e:
-        print ('-----------error:', e)
-        obj = A(make_id(), x=random.randint(0, 10))
-    obj.save()
+    #try:
+    #    if random.random() < 0.5:
+    #        obj = A(make_id(), x=random.randint(0, 10))
+    #    else:
+    #        obj = random.choice(list(A.objects.values()))
+    #        obj.x = random.randint(0, 10)
+    #except Exception as e:
+    #    print ('-----------error:', e)
+    #    obj = A(make_id(), x=random.randint(0, 10))
+    #obj.save()
 
 
 button_send.bind('click', send_data)

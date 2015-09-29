@@ -81,15 +81,14 @@ def render_ex(node, model, controller=None):
                     n.data('helper', reactive(render, n, fm, n[0].outerHTML))
             else:
                 if n.attr('if'):
-                    if n.first() is None:
+                    if n.children().first() is None:
                         n.append(children)
-                        n.first().removeClass('template')
-                    elif n.first().hasClass('template'):
-                        n.first().removeClass('template')
+                        n.children().first().removeClass('template')
+                    elif n.children().first().hasClass('template'):
+                        n.children().first().removeClass('template')
                     else:
                         return
                 if n.attr('r') or n.attr('r') == '':
-                    #n.data('helper', reactive(set_attributes(n, get_dict_from_attr(m, n[0].outerHTML))))
                     n.data('helper', reactive(set_attributes, n, get_dict_from_attr(m, n[0].outerHTML)))
                 for ch in children:
                     on_click = ch.attr('on-click')
@@ -99,14 +98,17 @@ def render_ex(node, model, controller=None):
                             method = getattr(m, on_click)
                         else:
                             method = getattr(controller, on_click)
+                        print('++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
+                        print(ch[0].outerHTML, on_click, method)
                         ch.click(method)
+
                     render_ex(ch, fm)
         else:
-            if n.first():
+            if n.children().first():
                 for ch in n.find('[r]'):
                     if ch.data('helper'):
                         m.reset(ch.data('helper'))
-                n.first().remove()
+                n.children().first().remove()
 
     children_ = []
     for n_ in node.children():

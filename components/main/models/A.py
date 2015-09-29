@@ -7,11 +7,12 @@ class A(Model):
         return self.x == 9
 
     def minus(self):
+        print('llego a minus', self.id)
         self.x -= 1
-        print('llego a minus', self._dirty)
         self.save()
 
     def plus(self):
+        print('llego a plus', self.id)
         self.x += 1
         self.save()
 

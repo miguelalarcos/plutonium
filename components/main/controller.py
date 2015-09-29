@@ -10,16 +10,39 @@ from components.lib.filter_mongo import filters
 from components.lib.utils import index_by_id, compare, index_in_list
 
 
-def get_dict_from_attr(m, t):
+def get_dict_from_attr(m, n):
     dct = {}
-    attrs = re.findall('\{[a-zA-Z_0-9]+\}', t)
+    attrs = n[0].attributes
     for attr in attrs:
-        attr = attr[1:-1]
-        v = getattr(m, attr)
-        if callable(v):
-            v = v()
-        dct[attr] = v
+        print('attr', attr)
+        name = attr.name
+        value = attr.value
+        print(name, value)
+        matches = re.findall('\{[a-zA-Z_0-9]+\}', value)
+        print(matches)
+        for match in matches:
+            match = match[1:-1]
+            v = getattr(m, match)
+            if callable(v) and name != 'on-click':
+                v = v()
+            dct[match] = v
+    print('get_dict_from_attr retorna', dct)
     return dct
+    #attrs = re.findall('\{[a-zA-Z_0-9]+\}', t)
+    #for attr in attrs:
+    #    if n.attr('on-click') == attr:
+    #        continue
+    #    attr = attr[1:-1]
+    #    if attr in ('plus', 'minus'):
+    #        print('es minus or plus', t)
+    #        print(n.attr('on-click'), attr)
+    #        continue
+    #    v = getattr(m, attr)
+    #    if callable(v):
+    #        v = v()
+    #    dct[attr] = v
+    #    print(dct)
+    #return dct
 
 
 def render_ex(node, model, controller=None):
@@ -31,9 +54,11 @@ def render_ex(node, model, controller=None):
             if type(item.value) is list:
                 ret = []
                 for it in item.value:
+                    print('es array', it, dct)
                     ret.append(it.format(**dct))
                 n_.attr(item.name, ret)
             else:
+                print('item.value', item.value, dct)
                 n_.attr(item.name, item.value.format(**dct))
 
 
@@ -54,17 +79,10 @@ def render_ex(node, model, controller=None):
 
         n.html(template.format(**dct))
         set_attributes(n, dct)
-        #for item in n[0].attributes:
-        #    if type(item.value) is list:
-        #        ret = []
-        #        for it in item.value:
-        #            ret.append(it.format(**dct))
-        #        n.attr(item.name, ret)
-        #    else:
-        #        n.attr(item.name, item.value.format(**dct))
         print('***render', n, n.html())
 
     def helper(n, m, children):
+        print('helper')
         fm = m
         if callable(m):
             m = m()
@@ -81,7 +99,7 @@ def render_ex(node, model, controller=None):
                     n.data('helper', reactive(render, n, fm, n[0].outerHTML))
             else:
                 if n.attr('if'):
-                    if n.children().first() is None:
+                    if n.children().length == 0:
                         n.append(children)
                         n.children().first().removeClass('template')
                     elif n.children().first().hasClass('template'):
@@ -89,7 +107,8 @@ def render_ex(node, model, controller=None):
                     else:
                         return
                 if n.attr('r') or n.attr('r') == '':
-                    n.data('helper', reactive(set_attributes, n, get_dict_from_attr(m, n[0].outerHTML)))
+                    n.data('helper', reactive(set_attributes, n, get_dict_from_attr(m, n)))  # , n[0].outerHTML)))
+
                 for ch in children:
                     on_click = ch.attr('on-click')
                     if on_click:
@@ -98,8 +117,6 @@ def render_ex(node, model, controller=None):
                             method = getattr(m, on_click)
                         else:
                             method = getattr(controller, on_click)
-                        print('++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
-                        print(ch[0].outerHTML, on_click, method)
                         ch.click(method)
 
                     render_ex(ch, fm)
@@ -120,10 +137,11 @@ def render_ex(node, model, controller=None):
 
 
 def makeDIV(model, template, controller=None):
-    print(' ********************** makeDIV', model, template, model.id)
+    print('makeDIV')
     node = jq(template)
     node.removeClass('template')
     render_ex(node, model, controller)
+    print('makeDIV retornamos node', node)
     return node
 
 
@@ -137,7 +155,6 @@ class BaseController(object):
 
     def subscribe(self, filter_=None):
         if filter_ is None:
-            print('sending filter', json.dumps(self.filter_json))
             self.ws.send(json.dumps(self.filter_json))
         else:
             self._set_filter(filter_)
@@ -168,16 +185,11 @@ class SelectedModelControllerRef(BaseController):
 
         controller = ref
         def f():
-            print('1')
             controller.touch
-            print('2')
             model = selection_func(controller.models)
-            print('3')
             self.selected = model  #
-            print('4')
             return model
 
-        print('f es', f)
         self.node = jq('#'+self.name)
         render_ex(self.node, f)
 
@@ -246,14 +258,16 @@ class Controller(BaseController):
         print('test filter', ini)
         if len(self.models) > self.limit:
             if ini != self.models[0].id:
-                self.models = self.models[1:]
-                print('return false')
+                self.out(self.models[0])
+                #self.models = self.models[1:]
+                print(1, self.models)
                 return False
             else:
-                self.models = self.models[:-1]
-                print('return false')
+                self.out(self.models[-1])
+                #self.models = self.models[:-1]
+                print(2, self.models)
                 return False
-        print('return true')
+        print(3, self.models)
         return True
 
     def test(self, model, raw):
@@ -286,32 +300,32 @@ class Controller(BaseController):
                 return True #False
 
     def new(self, model, i):
-        print('new')
         tupla = self.indexInList(model)
-        print('tupla', tupla)
         index = tupla[0]
-        print('index', index)
         self.models.insert(index, model)
-        print('modelo insertado')
-        if not self.test_filter(i):
-            print('retornamos')
-            return
+
+        #self.test_filter(i)
 
         action = tupla[1]
-        print('continuamos', action)
         if action == 'append':
+            print('                APPEND')
             node = makeDIV(model, jq('#'+str(self.node.id)+' .template')[0].outerHTML, self)
             ref = jq('#'+str(self.node.id))
             ref.append(node)
         elif action == 'before':
+            print('                BEFORE', tupla[2])
             node = makeDIV(model, jq('#'+str(self.node.id)+' .template')[0].outerHTML, self)
             ref = jq('#'+str(self.node.id)).children("[reactive_id='"+str(tupla[2])+"']")
             print('ref', '#'+str(self.node.id), str(tupla[2]))
             ref.before(node)
         elif action == 'after':
+            print('                AFTER', tupla[2])
             node = makeDIV(model, jq('#'+str(self.node.id)+' .template')[0].outerHTML, self)
             ref = jq('#'+str(self.node.id)).children("[reactive_id='"+str(tupla[2])+"']")
             ref.after(node)
+
+        self.test_filter(i)
+        print('fin new')
 
     def out(self, model):
         index = self.indexById(model.id)
@@ -329,7 +343,8 @@ class Controller(BaseController):
         else:
             print('move to ', model, tupla)
             node = jq('#'+str(self.node.id)).children("[reactive_id='"+str(model.id)+"']")
-            node.remove()
+
+            #node.remove()
             action = tupla[1]
             if action == 'before':
                 ref = jq('#'+str(self.node.id)).children("[reactive_id='"+str(tupla[2])+"']")

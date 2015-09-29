@@ -129,9 +129,7 @@ def do_find_one(collection, id):
 def broadcast(item):
     collection = item['__collection__']
     for client in Client.clients.values():
-        print(client.filters.values())
         for filt in client.filters.values():
-            print(filt.collection, collection)
             if filt.collection != collection:
                 continue
             after = yield do_find(filt, {'_id': 1})
@@ -152,9 +150,14 @@ def broadcast(item):
                         doc = yield do_find_one(collection, id)
                         to_send = doc
                         break
+            to_send = to_send or item
             if to_send:
                 to_send['__filter__'] = filt.full_name
-                to_send['__skip__'] = after[0]
+                if len(after) > 0:
+                    skip = after[0]
+                else:
+                    skip = '-1'
+                to_send['__skip__'] = skip
                 print('to send', to_send)
                 yield q_send.put((client.socket, to_send))
 

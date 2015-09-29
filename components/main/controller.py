@@ -255,20 +255,17 @@ class Controller(BaseController):
         return self.filter_object.pass_filter(raw)
 
     def test_filter(self, ini):
-        print('test filter', ini)
         if len(self.models) > self.limit:
             if ini != self.models[0].id:
                 self.out(self.models[0])
-                #self.models = self.models[1:]
-                print(1, self.models)
-                return False
             else:
                 self.out(self.models[-1])
-                #self.models = self.models[:-1]
-                print(2, self.models)
-                return False
-        print(3, self.models)
-        return True
+        #elif not self.pass_filter(self.models[0]):
+        #    self.out(self.models[0])
+        #elif not self.pass_filter(self.models[-1]):
+        #    self.out(self.models[-1])
+
+
 
     def test(self, model, raw):
         print('==>test', model, raw, model.id)
@@ -304,8 +301,6 @@ class Controller(BaseController):
         index = tupla[0]
         self.models.insert(index, model)
 
-        #self.test_filter(i)
-
         action = tupla[1]
         if action == 'append':
             print('                APPEND')
@@ -325,7 +320,6 @@ class Controller(BaseController):
             ref.after(node)
 
         self.test_filter(i)
-        print('fin new')
 
     def out(self, model):
         index = self.indexById(model.id)

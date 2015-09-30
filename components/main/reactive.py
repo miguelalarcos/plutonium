@@ -125,6 +125,8 @@ class Model(object):
         if current_call is not None:
             self._dep.append({'call': current_call, 'attr': name})
             add_to_map(self)
+        if '_'+name not in self.__dict__.keys():
+            raise AttributeError(name)
         return self.__dict__['_'+name]
 
     def __setattr__(self, key, value):

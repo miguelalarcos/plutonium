@@ -10,16 +10,23 @@ from components.lib.filter_mongo import filters
 from components.lib.utils import index_by_id, compare, index_in_list
 
 
-def get_dict_from_attr(m, n):
+def get_dict_from_attr(m, n, c):
     dct = {}
     attrs = n[0].attributes
+    print(attrs)
     for attr in attrs:
         name = attr.name
         value = attr.value
         matches = re.findall('\{[a-zA-Z_0-9]+\}', value)
         for match in matches:
+            print(match)
             match = match[1:-1]
-            v = getattr(m, match)
+            try:
+                v = getattr(m, match)
+            except Exception as e:
+                print('exception catched', e)
+                w = getattr(c, match)
+                v = lambda: w(m)
             if callable(v) and name != 'on-click':
                 v = v()
             dct[match] = v
@@ -35,10 +42,14 @@ def render_ex(node, model, controller=None):
             if type(item.value) is list:
                 ret = []
                 for it in item.value:
+                    print('set attributes', it)
                     ret.append(it.format(**dct))
+                    print('done sa')
                 n_.attr(item.name, ret)
             else:
+                print('set attributes', item.name, item.value, type(item.value))
                 n_.attr(item.name, item.value.format(**dct))
+                print('done set attributes')
 
 
     def render(n, m, template):
@@ -56,11 +67,12 @@ def render_ex(node, model, controller=None):
                 v = v()
             dct[attr] = v
 
+        print('render', template)
         n.html(template.format(**dct))
         set_attributes(n, dct)
         print('***render', n, n.html())
 
-    def helper(n, m, children):
+    def helper(n, m, children, c):
         print('helper')
         fm = m
         if callable(m):
@@ -86,8 +98,10 @@ def render_ex(node, model, controller=None):
                     else:
                         return
                 if n.attr('r') or n.attr('r') == '':
-                    n.data('helper', reactive(set_attributes, n, get_dict_from_attr(m, n)))  # , n[0].outerHTML)))
+                    print('calling problematic function set attributes inside reactive')
+                    n.data('helper', reactive(set_attributes, n, get_dict_from_attr(m, n, c)))  # , n[0].outerHTML)))
 
+                print('llego')
                 for ch in children:
                     on_click = ch.attr('on-click')
                     if on_click:
@@ -110,9 +124,9 @@ def render_ex(node, model, controller=None):
     for n_ in node.children():
         children_.append(jq(n_))
     if node.attr('if'):
-        reactive(helper, node, model, children_) # node.children())
+        reactive(helper, node, model, children_, controller) # node.children())
     else:
-        helper(node, model, children_) # node.children())
+        helper(node, model, children_, controller) # node.children())
 
 
 def makeDIV(model, template, controller=None):

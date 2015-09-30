@@ -22,7 +22,21 @@ filt = Filter({'__collection__': 'A', '__filter__': 'my_filter',
                                     'x': 5, 'y': 10, '__key__': [['x', -1], ], '__limit__': 2,
                                     '__skip__': 0})
 
-c = Controller('container', filt)
+
+class MyController(Controller):
+    def first(self, model):
+        self.touch
+        print('ids:')
+        print(model)
+        print(self.__dict__)
+        print(self.models)
+        if self.models[0] is model:
+            print('voy a retornar red')
+            return 'red'
+        print('voy a retornar vacio')
+        return ''
+
+c = MyController('container', filt)
 
 
 def make_id():

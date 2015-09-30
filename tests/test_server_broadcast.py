@@ -119,6 +119,8 @@ def test_broadcas_after_is_empty(monkeypatch, client):
     yield broadcast(model)
 
     assert not put.called
+    #assert call({'id': '0', 'x': 8, '__collection__': 'A', '__skip__': '-1', '__filter__':  filter.full_name}) in put.mock_calls
+
 
 @pytest.mark.gen_test
 def test_broadcas_after_yet_in_before(monkeypatch, client):

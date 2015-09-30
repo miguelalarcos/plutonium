@@ -106,6 +106,7 @@ def test_new_controller_limit_is_0(monkeypatch):
     jq.find().__iter__.return_value = []
     append = jq().append
     remove = jq().children().remove
+    jq().attr.return_value = False
 
     #controller.jq = jq
     monkeypatch.setattr(controller, 'jq', jq)
@@ -113,8 +114,8 @@ def test_new_controller_limit_is_0(monkeypatch):
     m = A(id='2', x=0, y=3)
     controller_.limit = 0
     controller_.new(m, '0')
-    assert not append.called
-    assert not remove.called
+    assert append.called
+    assert remove.called
     assert not jq().children().after.called
     assert not jq().children().before.called
     assert controller_.models == []
@@ -200,8 +201,8 @@ def test_modify_when_move_to__after(monkeypatch):
     controller_.modify(m)
 
     assert call("[reactive_id='2']") == children.mock_calls[0]
-    assert children().remove.called
-    assert call("[reactive_id='3']") == children.mock_calls[2]
+
+    assert call("[reactive_id='3']") == children.mock_calls[1]
     assert children().after.called
     assert controller_.models == [m2, m]
 
@@ -221,8 +222,8 @@ def test_modify_when_move_to__before(monkeypatch):
     controller_.modify(m2)
 
     assert call("[reactive_id='3']") == children.mock_calls[0]
-    assert children().remove.called
-    assert call("[reactive_id='2']") == children.mock_calls[2]
+
+    assert call("[reactive_id='2']") == children.mock_calls[1]
     assert children().before.called
     assert controller_.models == [m2, m]
 
@@ -384,8 +385,8 @@ def test_render_model_selection_selected(monkeypatch):
 
 
 def test_render_model_selection(monkeypatch):
-    node = Node("<div id='cc'><span template=true class='template'><span class='{x} hola' r>{x}</span><span r>{y}</span></span></div>")
-    node2 = Node("<div id='c'><span class='template' template=true><span class='{x} hola' r>{x}</span><span r>{y}</span></span>")
+    node = Node("<div id='cc'><span class='template'><span class='{x} hola' r>{x}</span><span r>{y}</span></span></div>")
+    node2 = Node("<div id='c'><span class='template'><span class='{x} hola' r>{x}</span><span r>{y}</span></span>")
 
     def jq(arg):
         print('side effect', arg)
@@ -422,26 +423,23 @@ def test_render_model_selection(monkeypatch):
                                     '__skip__': 0})
 
     cc = controller.Controller('cc', filter_=filter)
-    #jq.side_effect = side_effect
     c = controller.SelectedModelControllerRef('c', cc, selection)
-
-    #jq.side_effect = None
 
     cc.test(m, {'x': 8, 'y': 9, '__skip__': '0'})
 
-    assert node2.first().first().html() == '<span class="8 hola" r="">8</span>'
+    assert node2.children().first().children().first().html() == '<span class="8 hola" r="">8</span>'
     m.x = 800
-    assert node2.first().first().html() == '<span class="800 hola" r="">800</span>'
+    assert node2.children().first().children().first().html() == '<span class="800 hola" r="">800</span>'
 
     m2 = A(id='2', x=801, y=19)
     cc.test(m2, {'x': 801, 'y': 19, '__skip__': '2'})
     assert c.selected == m2
-    assert node2.first().first().html() == '<span class="801 hola" r="">801</span>'
+    assert node2.children().first().children().first().html() == '<span class="801 hola" r="">801</span>'
 
     m2.y = 20
-    assert node2.first().children()[-1].html() == '<span r="">20</span>'
+    assert node2.children().first().children()[-1].html() == '<span r="">20</span>'
 
     cc.test(m, {'x': 800, 'y': 20, '__skip__': '0'})
     assert len(cc.models) == 1
     assert c.selected == m
-    assert node2.first().first().html() == '<span class="800 hola" r="">800</span>'
+    assert node2.children().first().children().first().html() == '<span class="800 hola" r="">800</span>'

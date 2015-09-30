@@ -150,7 +150,9 @@ def broadcast(item):
                         doc = yield do_find_one(collection, id)
                         to_send = doc
                         break
-            to_send = to_send or item
+            if not to_send and item in filt.before:
+                to_send = item
+            #to_send = to_send or item
             if to_send:
                 to_send['__filter__'] = filt.full_name
                 if len(after) > 0:

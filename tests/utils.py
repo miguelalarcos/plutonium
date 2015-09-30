@@ -7,6 +7,26 @@ class Attribute(object):
         self.value = value
 
 
+class Children(list):
+    def first(self):
+        if len(self) > 0:
+            return self[0]
+        #else:
+        #    return Node('<div></div>')
+    @property
+    def length(self):
+        return len(self)
+
+    def before(self, node):
+        pass
+
+    def after(self, node):
+        pass
+
+    def remove(self):
+        pass
+
+
 class Node(object):
     def __init__(self, html, parent=None):
         self.parent = parent
@@ -15,7 +35,7 @@ class Node(object):
         self.attributes = []
         for k, v in self.soup.attrs.items():
             self.attributes.append(Attribute(k, v))
-        self._children = [Node(str(x), self) for x in self.soup.children if x.name in ('div', 'span')]
+        self._children = Children([Node(str(x), self) for x in self.soup.children if x.name in ('div', 'span')])
         self._data = None
 
     def __getitem__(self, item):
@@ -27,23 +47,20 @@ class Node(object):
         else:
             return self._data
 
-
     def find(self, attr):
         if attr == '[r]':
             return [x for x in self._children if x.attr('r')]
-            #return [Node(str(x), self) for x in self.soup.find_all() if x.name in ('div', 'span') and x.has_attr('r')]
-            #return self.soup.find_all(r="")
         return []
 
     def remove(self):
         self.parent.soup.clear()
-        self.parent._children = []
+        self.parent._children = Children([])
 
     def first(self):
-        try:
-            return self._children[0]
-        except IndexError:
-            return None
+        return self
+
+    def before(self, node):
+        pass
 
     def append(self, nodes):
         node = nodes[0]
@@ -56,11 +73,8 @@ class Node(object):
             return self._html
         self._html = value
 
-    def children(self, reactive_id=None):
-        if reactive_id:
-            return Mock()
+    def children(self, *args):
         return self._children
-        #return [Node(str(x), self) for x in self.soup.children if x.name in ('div', 'span')]
 
     def attr(self, attr, value=None):
         if value is None:
@@ -74,6 +88,7 @@ class Node(object):
                     item.value = value
                     self.soup.attrs[attr] = value
 
+    @property
     def outerHTML(self):
         return self._html
 
@@ -87,3 +102,10 @@ class Node(object):
             self._click = method
         else:
             return self._click()
+
+    def removeClass(self, klass):
+        if klass in self.soup.get('class', []):
+            self.soup.get('class').remove(klass)
+
+    def hasClass(self, name):
+        return name in self.soup.get('class')

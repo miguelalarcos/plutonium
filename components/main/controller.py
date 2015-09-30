@@ -14,35 +14,16 @@ def get_dict_from_attr(m, n):
     dct = {}
     attrs = n[0].attributes
     for attr in attrs:
-        print('attr', attr)
         name = attr.name
         value = attr.value
-        print(name, value)
         matches = re.findall('\{[a-zA-Z_0-9]+\}', value)
-        print(matches)
         for match in matches:
             match = match[1:-1]
             v = getattr(m, match)
             if callable(v) and name != 'on-click':
                 v = v()
             dct[match] = v
-    print('get_dict_from_attr retorna', dct)
     return dct
-    #attrs = re.findall('\{[a-zA-Z_0-9]+\}', t)
-    #for attr in attrs:
-    #    if n.attr('on-click') == attr:
-    #        continue
-    #    attr = attr[1:-1]
-    #    if attr in ('plus', 'minus'):
-    #        print('es minus or plus', t)
-    #        print(n.attr('on-click'), attr)
-    #        continue
-    #    v = getattr(m, attr)
-    #    if callable(v):
-    #        v = v()
-    #    dct[attr] = v
-    #    print(dct)
-    #return dct
 
 
 def render_ex(node, model, controller=None):
@@ -54,11 +35,9 @@ def render_ex(node, model, controller=None):
             if type(item.value) is list:
                 ret = []
                 for it in item.value:
-                    print('es array', it, dct)
                     ret.append(it.format(**dct))
                 n_.attr(item.name, ret)
             else:
-                print('item.value', item.value, dct)
                 n_.attr(item.name, item.value.format(**dct))
 
 

@@ -13,15 +13,13 @@ from components.lib.utils import index_by_id, compare, index_in_list
 def get_dict_from_attr(m, n, c):
     dct = {}
     attrs = n[0].attributes
-    print(attrs)
     for attr in attrs:
         name = attr.name
         value = attr.value
         matches = re.findall('\{[a-zA-Z_0-9]+\}', value)
         for match in matches:
-            print(match)
             match = match[1:-1]
-            try:
+            try:  # probar con if hasattr
                 v = getattr(m, match)
             except Exception as e:
                 print('exception catched', e)
@@ -39,27 +37,38 @@ def render_ex(node, model, controller=None):
 
     def set_attributes(n_, dct):
         for item in n_[0].attributes:
+            if item.name == 'value-integer':
+                continue
             if type(item.value) is list:
                 ret = []
                 for it in item.value:
-                    print('set attributes', it)
                     ret.append(it.format(**dct))
-                    print('done sa')
                 n_.attr(item.name, ret)
             else:
-                print('set attributes', item.name, item.value, type(item.value))
                 n_.attr(item.name, item.value.format(**dct))
-                print('done set attributes')
-
 
     def render(n, m, template):
+        print('render')
         if callable(m):
             m = m()
 
         if not m:
             return
+#
+        if n.attr('value-integer'):
+            def set_value(event):
+                try:
+                    val = int(n.val())
+                except ValueError:
+                    val = n.val()
+                setattr(m, n.attr('value-integer')[1:-1], val)
+            n.unbind()
+            n.keyup(set_value)
+#
+        attr_vi = n.attr('value-integer')
         dct = {}
         attrs = re.findall('\{[a-zA-Z_0-9]+\}', template)
+
         for attr in attrs:
             attr = attr[1:-1]
             v = getattr(m, attr)
@@ -67,9 +76,13 @@ def render_ex(node, model, controller=None):
                 v = v()
             dct[attr] = v
 
-        print('render', template)
         n.html(template.format(**dct))
         set_attributes(n, dct)
+
+        if attr_vi:
+            attr_vi = attr_vi[1:-1]
+            print(attr_vi, dct[attr_vi])
+            n.val(dct[attr_vi])
         print('***render', n, n.html())
 
     def helper(n, m, children, c):
@@ -87,6 +100,14 @@ def render_ex(node, model, controller=None):
         if v:
             if not children:
                 if n.attr('r') or n.attr('r') == '':
+                    #if n.attr('value-integer'):
+                    #    def set_value(event):
+                    #        try:
+                    #            val = int(n.val())
+                    #        except ValueError:
+                    #            val = n.val()
+                    #        setattr(m, n.attr('value-integer')[1:-1], val)
+                    #    n.keyup(set_value)
                     n.data('helper', reactive(render, n, fm, n[0].outerHTML))
             else:
                 if n.attr('if'):
@@ -98,10 +119,8 @@ def render_ex(node, model, controller=None):
                     else:
                         return
                 if n.attr('r') or n.attr('r') == '':
-                    print('calling problematic function set attributes inside reactive')
                     n.data('helper', reactive(set_attributes, n, get_dict_from_attr(m, n, c)))  # , n[0].outerHTML)))
 
-                print('llego')
                 for ch in children:
                     on_click = ch.attr('on-click')
                     if on_click:
@@ -110,6 +129,7 @@ def render_ex(node, model, controller=None):
                             method = getattr(m, on_click)
                         else:
                             method = getattr(controller, on_click)
+                            #method = lambda: w(m)
                         ch.click(method)
 
                     render_ex(ch, fm)

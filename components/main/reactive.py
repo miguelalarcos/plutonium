@@ -122,6 +122,9 @@ class Model(object):
         self._dep = ret
 
     def __getattr__(self, name):
+        if name in ('__set__', '__bool__', '__len__'):
+            return
+
         if current_call is not None:
             self._dep.append({'call': current_call, 'attr': name})
             add_to_map(self)
@@ -150,5 +153,8 @@ class Model(object):
             for item in self._dep:
                 if item['attr'] == key and item['call'] not in execute:
                     execute.append(item['call'])
+
+            print('self.ids', id(self), self.id)
+            print(self.__dict__)
             if do_consume:
                 consume()

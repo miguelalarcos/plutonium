@@ -26,10 +26,6 @@ filt = Filter({'__collection__': 'A', '__filter__': 'my_filter',
 class MyController(Controller):
     def first(self, model):
         self.touch
-        print('ids:')
-        print(model)
-        print(self.__dict__)
-        print(self.models)
         if self.models[0] is model:
             print('voy a retornar red')
             return 'red'

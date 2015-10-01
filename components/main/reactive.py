@@ -154,7 +154,5 @@ class Model(object):
                 if item['attr'] == key and item['call'] not in execute:
                     execute.append(item['call'])
 
-            print('self.ids', id(self), self.id)
-            print(self.__dict__)
             if do_consume:
                 consume()

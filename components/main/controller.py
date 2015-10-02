@@ -22,6 +22,9 @@ def format_attr(m, attrs, c):
     dct_ = {}
 
     for name, value in attrs.items():
+        print('parejita', name, value)
+        if type(value) is list:
+            value = ' '.join(value)
         matches = re.findall('\{[a-zA-Z_0-9]+\}', value)
         for match in matches:
             match = match[1:-1]
@@ -53,7 +56,7 @@ def set_attributes(n_, f_dct):
 
 
 def render(n, m, c, template, attributes):
-    print('*** render template', template)
+    print('*** render template', n, m, c, template)
     if callable(m):
         m = m()
 
@@ -146,7 +149,7 @@ def helper(n, m, children, c, attributes):
 def render_ex(node, model, controller=None):
     #if not model:
     #    return
-
+    """
     def _set_attributes(n_, f_dct):
         dct = f_dct()
         for item in n_[0].attributes:
@@ -250,7 +253,7 @@ def render_ex(node, model, controller=None):
                     if ch.data('helper'):
                         m.reset(ch.data('helper'))
                 n.children().first().remove()
-
+    """
     children_ = []
     for n_ in node.children():
         children_.append(jq(n_))

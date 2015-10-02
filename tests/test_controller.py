@@ -231,27 +231,6 @@ def test_modify_when_move_to__before(monkeypatch):
 
 
 def test_SelectedModelControllerRef(monkeypatch):
-    #node = MagicMock()
-    #node1 = MagicMock()
-    #Attribute = namedtuple('Attribute', ['name', 'value'])
-    #node1[0].attributes = [Attribute('class', '{x}')]
-    #node2 = MagicMock()
-    #node2[0].attributes = []
-    #jq = MagicMock()
-    #controller.jq = jq
-
-    #node.find().__iter__.return_value = [node1, node2]
-    #node1.outerHTML.return_value = '<span r class="{x}">{x}</span>'
-    #node1.html.return_value = '{x}'
-    #node2.outerHTML.return_value = '<span r>{y}</span>'
-    #node2.html.return_value = '{y}'
-
-    #def side_effect(arg):
-    #    return arg
-    #jq = MagicMock()
-
-
-
 
     node = Node("<div id='c'><span template=true class='template'><span class='{x} hola' r>{x}</span><span r>{y}</span></span></div>")
     node2 = Node("<div id='cr'><span class='template' template=true><span class='{x} hola' r>{x}</span><span r>{y}</span></span>")
@@ -263,25 +242,24 @@ def test_SelectedModelControllerRef(monkeypatch):
         if arg == '#cr':
             return node2
         if arg == '#c .template':
-            return node.first() #Node("<span template=true class='template'><span class='{x} hola' r>{x}</span><span r>{y}</span></span>")
+            return node.first()
         if type(arg) == str:
             return Node(arg)
         print('retorno', arg)
         return arg
-    #jq.side_effect = side_effect
-    #controller.jq = jq
+
     monkeypatch.setattr(controller, 'jq', jq)
 
     m = A(id=None, x=8, y=9)
-    #jq.side_effect = side_effect
-
+    m_empty = A(id=None, x='', y='')
     filter = Filter({'__collection__': 'A', '__filter__': 'my_filter',
                                     'x': 0, 'y': 1000, '__key__': [('x', 'desc'), ('y', 'desc')], '__limit__': 2,
                                     '__skip__': 0})
 
     c = controller.Controller('c', filter_=filter)
+
     def selection(lista):
-        s = None
+        s = m_empty
         for m_ in lista:
             if m_.selected:
                 s = m_
@@ -290,7 +268,7 @@ def test_SelectedModelControllerRef(monkeypatch):
     cr = controller.SelectedModelControllerRef('cr', c, selection)
 
     c.test(m, {'x': 8, 'y': 9, '__skip__': '0'})
-    assert cr.selected is None
+    assert cr.selected is m_empty
     m.selected = True
     assert cr.selected == m
 
@@ -309,7 +287,7 @@ def test_SelectedModelControllerRef(monkeypatch):
     assert cr.selected == m3
     m3.x = -1
     c.test(m3, {'x': -1, 'y': 1, '__skip__': '0'})
-    assert cr.selected is None
+    assert cr.selected is m_empty
 
 
 def test_render_model_selection_selected(monkeypatch):
@@ -331,6 +309,7 @@ def test_render_model_selection_selected(monkeypatch):
 
     monkeypatch.setattr(controller, 'jq', jq)
 
+    m_empty = A(id=None, x='', y='')
     def selection(lista):
         s = None
         for m_ in lista:
@@ -339,7 +318,7 @@ def test_render_model_selection_selected(monkeypatch):
         if s:
             return s
         else:
-            return None #A(id=None, x=0, y=0)
+            return m_empty
 
     def side_effect(arg):
         if arg == '#cr':
@@ -381,7 +360,7 @@ def test_render_model_selection_selected(monkeypatch):
     assert c.selected == m3
     m3.x = -1
     cc.test(m3, {'x': -1, 'y': 1, '__skip__': '0'})
-    assert c.selected is None
+    assert c.selected is m_empty
 
 
 def test_render_model_selection(monkeypatch):

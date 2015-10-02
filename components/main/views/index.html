@@ -1,16 +1,16 @@
 {% extends "base.html" %}
 
 {% block page %}
-    <div id="first"><span r>id:{id}</span> <input type="text" r value-integer="{x}"> <button on-click="{save}">save</button> <h2 r>x:{x}</h2></div>
+    <div id="first"><span r>id:{id}</span> <input type="text" r value-integer="{x}"> <button r on-click="{save}">save</button> <h2 r>x:{x}</h2></div>
 
     <div id="container">
       <div r reactive_id='{id}' class="template {first}">
           <span>hello</span>
           <span r>id:{id}</span> <b r>x:{x}</b> <input type="text" r value-integer="{x}">
-          <button on-click="{plus}">plus</button>
+          <button r on-click="{plus}">plus</button>
           <span if='{bool}'>
               <span class="template">
-                  <button on-click="{minus}">minus</button>
+                  <button r on-click="{minus}">minus</button>
               </span>
           </span>
       </div>

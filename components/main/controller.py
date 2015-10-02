@@ -34,7 +34,10 @@ def get_dict_from_attr(m, attrs, c):
                 w = getattr(c, match)
                 v = lambda: w(m)
             if callable(v) and name != 'on-click':
+                print(name, 'llamo a v', v)
                 v = v()
+
+
             #dct[match] = v
             dct[name] = v
     print('get dict from attr returns', dct)
@@ -60,9 +63,11 @@ def render_ex(node, model, controller=None):
             #    n_.attr(item.name, ret)
             #else:
                 #n_.attr(item.name, item.value.format(**dct))
-            print(dct)
-            if item.name in dct.keys():
+
+            if item.name in dct.keys() and item.name != 'on-click':
+                print('hacemos n_.attr de item.name igual a', item.name, 'value:', dct)
                 n_.attr(item.name, dct[item.name])
+        print('returning from set attribute')
 
     def render(n, m, c, template, attributes):
         print('*** render template', template)
@@ -72,6 +77,7 @@ def render_ex(node, model, controller=None):
         if not m:
             return
 #
+        n.unbind()
         if n.attr('value-integer'): # solo cuando cambie el modelo
             def set_value(event):
                 try:
@@ -79,12 +85,23 @@ def render_ex(node, model, controller=None):
                 except ValueError:
                     val = n.val()
                 setattr(m, n.attr('value-integer')[1:-1], val)
-            n.unbind()
+            #n.unbind()
             n.keyup(set_value)
+#
+        on_click = n.attr('on-click')
+        if on_click:
+            on_click = on_click[1:-1]
+            if hasattr(m, on_click):
+                method = getattr(m, on_click)
+            else:
+                #method = getattr(controller, on_click)
+                method = lambda: getattr(c, on_click)(m)
+            n.click(method)
 #
         attr_vi = n.attr('value-integer')
         dct = {}
         attrs = re.findall('\{[a-zA-Z_0-9]+\}', template)
+        dct_attr = get_attrs_in_dict(attributes)
 
         for attr in attrs:
             attr = attr[1:-1]
@@ -95,23 +112,27 @@ def render_ex(node, model, controller=None):
                 w = getattr(c, attr)
                 v = lambda: w(m)
             if callable(v):
-                v = v()
+                if dct_attr.get('on-click')[1:-1] != attr:
+                    print('es callable', dct_attr.get('on-click')[1:-1], attr)
+                    v = v()
+                else:
+                    v = 'method'
             dct[attr] = v
 
         print('***       render dct', dct)
         n.html(template.format(**dct))
         #set_attributes(n, lambda: dct)
-        attrs = get_attrs_in_dict(attributes)
-        set_attributes(n, lambda: get_dict_from_attr(m, attrs, c))
-
+        #dct_attr = get_attrs_in_dict(attributes)
+        set_attributes(n, lambda: get_dict_from_attr(m, dct_attr, c))
+        print('volvemos de set attributes')
         if attr_vi:
             attr_vi = attr_vi[1:-1]
-            print(attr_vi, dct[attr_vi])
             n.val(dct[attr_vi])
         print('***render', n, n.html())
 
     def helper(n, m, children, c, attributes):
-        print('helper')
+        print('helper', n)
+        print(n.data)
         fm = m
         if callable(m):
             m = m()
@@ -125,7 +146,9 @@ def render_ex(node, model, controller=None):
         if v:
             if not children:
                 if n.attr('r') or n.attr('r') == '':
-                    n.data('helper', reactive(render, n, fm, c, n[0].outerHTML, attributes))
+                    print('1)')
+                    print('1)', n.data)
+                    n.data('helper', reactive(render, n, fm, c, n[0].outerHTML, attributes)) # hay que pasar de attributes a attrs = get_attrs_in_dict(attributes)
             else:
                 if n.attr('if'):
                     if n.children().length == 0:
@@ -137,23 +160,28 @@ def render_ex(node, model, controller=None):
                         return
                 if n.attr('r') or n.attr('r') == '':
                     attrs = get_attrs_in_dict(attributes)
+                    print('2)')
+                    print('2)', n.data)
                     n.data('helper', reactive(set_attributes, n, lambda: get_dict_from_attr(m, attrs, c)))
 
                 for ch in children:
-                    on_click = ch.attr('on-click')
-                    if on_click:
-                        on_click = on_click[1:-1]
-                        if hasattr(m, on_click):
-                            method = getattr(m, on_click)
-                        else:
-                            method = getattr(controller, on_click)
-                            #method = lambda: getattr(controller, on_click)(m)
-                        ch.click(method)
+                    #on_click = ch.attr('on-click')
+                    #if on_click:
+                    #    on_click = on_click[1:-1]
+                    #    if hasattr(m, on_click):
+                    #        method = getattr(m, on_click)
+                    #    else:
+                    #        method = getattr(controller, on_click)
+                    #        #method = lambda: getattr(controller, on_click)(m)
+                    #    ch.click(method)
 
                     render_ex(ch, fm)
         else:
             if n.children().first():
                 for ch in n.find('[r]'):
+                    ch = jq(ch)
+                    print('3)')
+                    print('3)', ch.data)
                     if ch.data('helper'):
                         m.reset(ch.data('helper'))
                 n.children().first().remove()

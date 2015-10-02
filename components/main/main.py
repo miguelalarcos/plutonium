@@ -26,7 +26,7 @@ filt = Filter({'__collection__': 'A', '__filter__': 'my_filter',
 class MyController(Controller):
     def first(self, model):
         self.touch
-        if self.models[0] is model:
+        if len(self.models) > 0 and self.models[0] is model:
             print('voy a retornar red')
             return 'red'
         print('voy a retornar vacio')

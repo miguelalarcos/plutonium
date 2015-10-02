@@ -62,6 +62,9 @@ class Node(object):
     def before(self, node):
         pass
 
+    def unbind(self):
+        pass
+
     def append(self, nodes):
         node = nodes[0]
         self._children.append(node)

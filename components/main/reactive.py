@@ -28,6 +28,11 @@ def get_current_call():
     global current_call
     return current_call
 
+
+def reset_current_call():
+    global current_call
+    current_call = None
+
 execute = []
 map_ = {} # helper reative function to list of objects to reset
 

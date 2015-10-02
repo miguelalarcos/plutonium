@@ -6,6 +6,9 @@ class Attribute(object):
         self.name = name
         self.value = value
 
+    def __repr__(self):
+        return self.name + ':' + self.value
+
 
 class Children(list):
     def first(self):
@@ -32,6 +35,9 @@ class Node(object):
         self.parent = parent
         self._html = html
         self.soup = BeautifulSoup(html, 'html.parser').div or BeautifulSoup(html, 'html.parser').span
+
+        self._inner_html = "".join([str(x) for x in self.soup.contents])
+
         self.attributes = []
         for k, v in self.soup.attrs.items():
             self.attributes.append(Attribute(k, v))
@@ -73,8 +79,12 @@ class Node(object):
 
     def html(self, value=None):
         if value is None:
-            return self._html
-        self._html = value
+            #return self._html
+            return self._inner_html
+        self._inner_html = value
+        self.soup.string = value
+
+        #self._html = value
 
     def children(self, *args):
         return self._children
@@ -93,7 +103,12 @@ class Node(object):
 
     @property
     def outerHTML(self):
-        return self._html
+        return str(self.soup)
+        print('>', self.html(), self.soup)
+        dct = {}
+        for attr in self.attributes:
+            dct[attr.name] = attr.value
+        return str(self.soup).format(**dct)
 
     def removeAttr(self, attr):
         self.attributes = [x for x in self.attributes if x.name != attr]

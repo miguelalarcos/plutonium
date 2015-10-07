@@ -55,7 +55,7 @@ class Node(object):
 
     def find(self, attr):
         if attr == '[r]':
-            return [x for x in self._children if x.attr('r')]
+            return [x for x in self._children if x.attr('r') == '']
         return []
 
     def remove(self):
@@ -126,4 +126,9 @@ class Node(object):
             self.soup.get('class').remove(klass)
 
     def hasClass(self, name):
+        if self.soup.get('class') is None:
+            return False
         return name in self.soup.get('class')
+
+    def __repr__(self):
+        return str(self.soup)

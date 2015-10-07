@@ -4,13 +4,25 @@ from mock import Mock, MagicMock, call
 sys.modules['browser'] = Mock()
 import re
 from components.main.reactive import Model, reactive
-from utils import Node
-#from browser import document
 from pyquery import PyQuery
 
 
 class ExtendedPyQuery(PyQuery):
     _data = {}
+    _click = {}
+    _keyup = {}
+
+    def keyup(self, method=None):
+        if method:
+            ExtendedPyQuery._keyup[self.attr('id')] = method
+        else:
+            ExtendedPyQuery._keyup[self.attr('id')]()
+
+    def click(self, method=None):
+        if method:
+            ExtendedPyQuery._click[self.attr('id')] = method
+        else:
+            ExtendedPyQuery._click[self.attr('id')]()
 
     def data(self, key, data=None):
         if data is None:
@@ -21,21 +33,9 @@ class ExtendedPyQuery(PyQuery):
     def contains(document, node):
         node = pq(node)
         id_ = node.attr('id') or 'None'
-        print('#'+id_)
         return len(document.find('#'+id_))
 
 pq = ExtendedPyQuery
-
-jq = Mock()
-ret = [True, True, True, True, True, False, True, True, True]
-
-
-def side_effect(doc, n_):
-    return ret.pop(0)
-
-
-#jq.contains.side_effect = side_effect
-
 document = None
 
 
@@ -48,28 +48,26 @@ def if_function(controller, if_, node, html):
         val = getattr(controller, if_)
         if callable(val):
             val = val()
-        print(val)
+
         if not val:
             for ch in node.find('[r]'):
                 ch = pq(ch)
                 if ch.data('helper'):
-                    #c, h = ch.data('helper')
                     for c, h in ch.data('helper'):
                         c.reset(h)
-            #for ch in node.children():  # node.children().remove()
-            #    pq(ch).remove()
             node.children().remove()
         else:
             if len(node.children()) == 0:
                 children = pq(html)
                 node.append(children)
                 for ch in children:
-                    print('-->', pq(ch))
                     parse(controller, pq(ch))
 
 
 def render(model, node, template):
-    print('template', template)
+    print('render:', template)
+    if template is None:
+        return
     if is_alive(node):
         attrs = re.findall('\{[a-zA-Z_0-9]+\}', template)
         dct = {}
@@ -78,7 +76,27 @@ def render(model, node, template):
             dct[attr] = getattr(model, attr)
 
         node.html(template.format(**dct))
-        print('>', node)
+        #print('>', node)
+
+
+def set_events(controller, node, attrs):
+    on_click = attrs.get('on-click')
+    if on_click:
+        on_click = on_click[1:-1]
+        print(attrs, on_click)
+        method = getattr(controller, on_click)
+        node.click(method)
+    integer_value = attrs.get('integer-value')
+    if integer_value:
+        integer_value = integer_value[1:-1]
+
+        def set_integer_value(event=None):
+            try:
+                val = int(node.val())
+            except ValueError:
+                val = node.val()
+            setattr(controller, integer_value, val)
+        node.keyup(set_integer_value)
 
 
 def set_attributes(controller, node, attrs):
@@ -90,10 +108,14 @@ def set_attributes(controller, node, attrs):
         for attr in attrs:
             attr = attr[1:-1]
             v = getattr(controller, attr)
-            if callable(v):
+            if callable(v) and key != 'on-click':
                 v = v()
+            if key == 'integer-value':
+                node.val(str(v))
+
             mapping[attr] = v
-        node.attr(key, value.format(**mapping))
+        if key not in ('on-click', 'integer-value'):
+            node.attr(key, value.format(**mapping))
 
 
 def parse(controller, node):
@@ -109,10 +131,13 @@ def parse(controller, node):
                 for attr in node[0].attributes:
                     dct[attr.name] = attr.value
             except AttributeError:
-                dct = node[0].attrib
+                dct = {}
+                for k, v in node[0].attrib.items():
+                    dct[k] = v
 
             helper = reactive(set_attributes, controller, node, dct)
             node.data('helper', [(controller, helper)])
+            set_events(controller, node, dct)
         if len(node.children()) == 0:
             if node.attr('r') == '':
                 helper = reactive(render, controller, node, node.html())
@@ -145,7 +170,10 @@ class A(Model):
         return self.z != 9
 
     def hello(self):
-        return 'hello world!'
+        return 'hello world!' + self.post
+
+    def click(self):
+        print('click')
 
 
 def test_0():
@@ -174,7 +202,7 @@ def test_if_if():
 
 
 def test_1():
-    a = A(id=None, y=8, z=9)
+    a = A(id=None, y=8, z=9, post='')
     node = pq("<div id='a' class='template'><div r id='0' class={hello}>{y}</div><div id='b' if={h}><div r id='1'>{z}</div></div></div>")
     global document
     document = node
@@ -188,3 +216,32 @@ def test_1():
     print('a.z=13')
     a.z = 13
     assert str(node) == '<div id="a" class="template"><div r="" id="0" class="hello world!">8</div><div id="b" if="{h}"><div r="" id="1">13</div></div></div>'
+    print('a.post x')
+    a.post = 'x'
+    assert str(node) == '<div id="a" class="template"><div r="" id="0" class="hello world!x">8</div><div id="b" if="{h}"><div r="" id="1">13</div></div></div>'
+
+
+def test_on_click():
+    a = A(id=None, y=8)
+    node = pq("<div id='a' class='template'><div r id='0' on-click={click}>{y}</div></div>")
+    global document
+    document = node
+    parse(a, node)
+
+    n = node.find('#0')
+    n.click()
+    #assert False
+
+
+def test_integer_value():
+    a = A(id=None, y=8)
+    node = pq("<div id='a' class='template'><input r id='0' integer-value={y}></div>")
+    global document
+    document = node
+    parse(a, node)
+
+    n = node.find('#0')
+    assert n.val() == '8'
+    n.val('10')
+    n.keyup()
+    assert a.y == 10

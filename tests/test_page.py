@@ -5,7 +5,7 @@ sys.modules['browser'] = Mock()
 import re
 from components.main.reactive import Model, reactive
 from pyquery import PyQuery
-
+import random
 
 class ExtendedPyQuery(PyQuery):
     _data = {}
@@ -33,7 +33,12 @@ class ExtendedPyQuery(PyQuery):
     def contains(document, node):
         node = pq(node)
         id_ = node.attr('id') or 'None'
-        return len(document.find('#'+id_))
+        if len(document.find('#'+id_)):
+            return True
+        rid = node.attr('reactive_id') or 'None'
+        if len(document.find("[reactive_id='" + rid + "']")):
+            return True
+        return False
 
 pq = ExtendedPyQuery
 document = None
@@ -44,11 +49,11 @@ def is_alive(node):
 
 
 def if_function(controller, if_, node, html):
+    print('if function', if_, node)
     if is_alive(node):
         val = getattr(controller, if_)
         if callable(val):
             val = val()
-
         if not val:
             for ch in node.find('[r]'):
                 ch = pq(ch)
@@ -62,6 +67,8 @@ def if_function(controller, if_, node, html):
                 node.append(children)
                 for ch in children:
                     parse(controller, pq(ch))
+            elif len(node.children()) == 1:
+                parse(controller, node.children())
 
 
 def render(model, node, template):
@@ -69,6 +76,7 @@ def render(model, node, template):
     if template is None:
         return
     if is_alive(node):
+        print('llego')
         attrs = re.findall('\{[a-zA-Z_0-9]+\}', template)
         dct = {}
         for attr in attrs:
@@ -119,6 +127,7 @@ def set_attributes(controller, node, attrs):
 
 
 def parse(controller, node):
+    print('parse', node)
     if_ = node.attr('if')
     if if_:
         if_ = if_[1:-1]
@@ -147,12 +156,11 @@ def parse(controller, node):
                 else:
                     node.data('helper', [(controller, helper)])
         else:
-            for ch in node.children():
-                ch = pq(ch)
-                if ch.hasClass('template'):
-                    # register
-                    pass
-                else:
+            if node.hasClass('template'):
+                controller.register(node)
+            else:
+                for ch in node.children():
+                    ch = pq(ch)
                     parse(controller, ch)
 
 
@@ -161,6 +169,14 @@ class Controller(Model):
 
     def x(self):
         return False
+
+    def register(self, node):
+        a = A(id=None, x=random.randint(0,999))
+        n_ = pq(node.html())
+        n_.attr('reactive_id', a.id)
+        node.children().remove()
+        node.append(n_)
+        parse(a, n_)
 
 
 class A(Model):
@@ -201,7 +217,7 @@ def test_if_if():
     assert str(node) == '<div class="page"><div id="a" if="{a}"><div id="b" if="{b}"><div id="0" class="template">hola{hhh}</div></div></div></div>'
 
 
-def test_1():
+def test_class_and_if_model():
     a = A(id=None, y=8, z=9, post='')
     node = pq("<div id='a' class='template'><div r id='0' class={hello}>{y}</div><div id='b' if={h}><div r id='1'>{z}</div></div></div>")
     global document
@@ -245,3 +261,17 @@ def test_integer_value():
     n.val('10')
     n.keyup()
     assert a.y == 10
+
+
+def test_register():
+    node = pq('<div class="page"><div id="a" if="{a}"><div id="b" if="{b}"><div id="0" filter="filtro1" class="template"><span r>{x}</span></div></div></div></div>')
+    global document
+    document = node
+    c = Controller(id=None, a=True, b=True)
+    parse(c, node)
+    print(node)
+    c.b = False
+    print(node)
+    c.b = True
+    print(node)
+    assert False

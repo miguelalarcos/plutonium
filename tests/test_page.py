@@ -76,7 +76,6 @@ def render(model, node, template):
     if template is None:
         return
     if is_alive(node):
-        print('llego')
         attrs = re.findall('\{[a-zA-Z_0-9]+\}', template)
         dct = {}
         for attr in attrs:
@@ -163,20 +162,71 @@ def parse(controller, node):
                     ch = pq(ch)
                     parse(controller, ch)
 
+queries = {}
+queries['query'] = lambda a, b: {"x": {"gte": a, "lte": b}}
+
+
+class Query(object):
+    def __init__(self, query, kw):
+        self.name = query
+        self.full_name = str((query, tuple(sorted(kw.items()))))
+        self.query = queries[query](**kw)
+        self.models = [A(id=None, x=random.randint(0,999))]
+        self.nodes = []
+
+    def change(self, kw):
+        self.full_name = str((self.name, tuple(sorted(kw.items()))))
+        self.query = queries[self.name](**kw)
+        for node, _ in self.nodes:
+            node.children().remove()
+
 
 class Controller(Model):
     objects = {}
+    queries = {}
+
+    def __init__(self, id, **kwargs):
+        Model.__init__(self, id, **kwargs)
+
+        @reactive
+        def f():
+            self.subscribe(name='0', query='query', a=self.a, b=self.b)
 
     def x(self):
         return False
 
     def register(self, node):
-        a = A(id=None, x=random.randint(0,999))
-        n_ = pq(node.html())
-        n_.attr('reactive_id', a.id)
+        name = node.attr('query-name')
+        html = node.html()
         node.children().remove()
-        node.append(n_)
-        parse(a, n_)
+        self.queries[name].nodes.append((node, html))
+        for a in self.queries[name].models:
+            n_ = pq(html)
+            n_.attr('reactive_id', a.id)
+            node.append(n_)
+            parse(a, n_)
+
+    def subscribe(self, **kw):
+        name = kw.pop('name')
+        query = kw.pop('query')
+        previous = Controller.queries.get(name)
+        if previous:
+            print('stop subscription')
+            previous.change(kw)
+        else:
+            Controller.queries[name] = Query(query, kw)
+
+    def append(self, model, query_full_name):
+        for query in self.queries.values():
+            if query.full_name == query_full_name:
+                break
+        query.models.append(model)
+        for node, html in query.nodes:
+            n_ = pq(html)
+            n_.attr('reactive_id', model.id)
+            node.append(n_)
+            parse(model, n_)
+
 
 
 class A(Model):
@@ -264,14 +314,15 @@ def test_integer_value():
 
 
 def test_register():
-    node = pq('<div class="page"><div id="a" if="{a}"><div id="b" if="{b}"><div id="0" filter="filtro1" class="template"><span r>{x}</span></div></div></div></div>')
+    node = pq('<div class="page"><div id="0" query-name="0" class="template"><span r>{x}</span></div></div>')
     global document
     document = node
-    c = Controller(id=None, a=True, b=True)
+    c = Controller(id=None, a=0, b=10)
     parse(c, node)
     print(node)
-    c.b = False
-    print(node)
-    c.b = True
+    c.a = 1
+    print('->', node)
+    a = A(id=None, x=-1)
+    c.append(a, "('query', (('a', 1), ('b', 10)))")
     print(node)
     assert False

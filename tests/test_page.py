@@ -162,23 +162,26 @@ def parse(controller, node):
                     ch = pq(ch)
                     parse(controller, ch)
 
-queries = {}
-queries['query'] = lambda a, b: {"x": {"gte": a, "lte": b}}
-
 
 class Query(object):
-    def __init__(self, query, kw):
-        self.name = query
-        self.full_name = str((query, tuple(sorted(kw.items()))))
-        self.query = queries[query](**kw)
+    def __init__(self, name, sort, skip, limit, **kw):
+        self.name = name
+        self.full_name = str((name, tuple(sorted([('sort', sort)]+[('skip', skip)]+list(kw.items())+[('limit',limit)]))))
+        print(self.full_name)
+
+        self.sort =sort
+        self.skip = skip
+        self.limit = limit
+        for k,v in kw.items():
+            setattr(self, k, v)
         self.models = [A(id=None, x=random.randint(0,999))]
         self.nodes = []
 
-    def change(self, kw):
-        self.full_name = str((self.name, tuple(sorted(kw.items()))))
-        self.query = queries[self.name](**kw)
-        for node, _ in self.nodes:
-            node.children().remove()
+
+class MyQuery(Query):
+
+    def query(self):
+        return {'x': {'$gte': self.a, '$lte': self.b}}
 
 
 class Controller(Model):
@@ -190,7 +193,8 @@ class Controller(Model):
 
         @reactive
         def f():
-            self.subscribe(name='0', query='query', a=self.a, b=self.b)
+            q = MyQuery(name='0', sort=(('x', 1),), skip=0, limit=1, a=self.a, b=self.b)
+            self.subscribe(q)
 
     def x(self):
         return False
@@ -206,15 +210,18 @@ class Controller(Model):
             node.append(n_)
             parse(a, n_)
 
-    def subscribe(self, **kw):
-        name = kw.pop('name')
-        query = kw.pop('query')
+    def subscribe(self, q):
+        name = q.name
         previous = Controller.queries.get(name)
         if previous:
             print('stop subscription')
-            previous.change(kw)
-        else:
-            Controller.queries[name] = Query(query, kw)
+            q.nodes = previous.nodes
+            for node, _ in q.nodes:
+                if node.data('helper'):
+                    for c, h in node.data('helper'):
+                        c.reset(h)
+                node.children().remove()
+        Controller.queries[name] = q
 
     def append(self, model, query_full_name):
         for query in self.queries.values():

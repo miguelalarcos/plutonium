@@ -41,6 +41,7 @@ class ExtendedPyQuery(PyQuery):
         return False
 
 pq = ExtendedPyQuery
+jq = pq
 document = None
 
 
@@ -224,20 +225,85 @@ class Controller(Model):
                 node.children().remove()
         Controller.queries[name] = q
 
-    def append(self, model, query_full_name):
-        print('model append', query_full_name)
+    def test(self, model, raw, query_full_name):
         for query in self.queries.values():
             if query.full_name == query_full_name:
-                print('break')
-                break
-        print('-->', query.full_name)
-        query.models.append(model)
-        for node, html in query.nodes:
-            n_ = pq(html)
-            n_.attr('reactive_id', model.id)
-            node.append(n_)
-            parse(model, n_)
+                if '__new__' in raw.keys():
+                    self.new(model, raw, query)
+                elif '__out__' in raw.keys():
+                    self.out(model, query)
+                else:
+                    self.modify(model, query)
 
+    def modify(self, model, query):
+        index = self.index_by_id(model.id)
+        del query.models[index]
+        tupla = self.index_in_DOM(model)
+
+        if index == tupla[0]:
+            print('ocupa misma posicion')
+        else:
+            print('move to ', model, tupla)
+            for node, html in query.nodes:
+                n_ = node.children("[reactive_id='"+str(model.id)+"']")
+                ref = node.children("[reactive_id='"+str(tupla[2])+"']")
+                action = tupla[1]
+                if action == 'before':
+                    ref.before(n_)
+                else:
+                    ref.after(n_)
+                parse(model, n_)
+
+        query.models.insert(tupla[0], model)
+
+    def out(self, model, query):
+        index = self.index_by_id(model.id, query.models)
+        del query.models[index]
+        for node, html in query.nodes:
+            node.children("[reactive_id='"+str(model.id)+"']").remove()
+
+    def new(self, model, raw, query):
+        tupla = self.index_in_DOM(model)
+        index = tupla[0]
+        query.models.insert(index, model)
+
+        action = tupla[1]
+        if action == 'append':
+            for node, html in query.nodes:
+                n_ = jq(html)
+                n_.attr('reactive_id', model.id)
+                node.append(n_)
+                parse(model, n_)
+        elif action == 'before':
+            for node, html in query.nodes:
+                n_ = jq(html)
+                n_.attr('reactive_id', model.id)
+                ref = node.children("[reactive_id='"+str(tupla[2])+"']")
+                ref.before(n_)
+                parse(model, n_)
+        elif action == 'after':
+            for node, html in query.nodes:
+                n_ = jq(html)
+                n_.attr('reactive_id', model.id)
+                ref = node.children("[reactive_id='"+str(tupla[2])+"']")
+                ref.after(n_)
+                parse(model, n_)
+
+        if len(query.models) > query.limit:
+            if raw['__skip__'] != query.models[0].id:
+                self.out(query.models[0])
+            else:
+                self.out(query.models[-1])
+
+    def append(self, model, query_full_name):
+        for query in self.queries.values():
+            if query.full_name == query_full_name:
+                query.models.append(model)
+                for node, html in query.nodes:
+                    n_ = pq(html)
+                    n_.attr('reactive_id', model.id)
+                    node.append(n_)
+                    parse(model, n_)
 
 
 class A(Model):

@@ -134,7 +134,7 @@ def broadcast(item):
                 continue
             after = yield do_find(filt, {'_id': 1})
             after = [x['id'] for x in after]
-            print('after', after)
+
             to_send = None
             if item['id'] in after:
                 to_send = item
@@ -152,8 +152,11 @@ def broadcast(item):
                         break
             if not to_send and item['id'] in filt.before:
                 to_send = item
-            #to_send = to_send or item
+                to_send['__out__'] = True
+
             if to_send:
+                if to_send['id'] not in filt.before:
+                    to_send['__new__'] = True
                 to_send['__filter__'] = filt.full_name
                 if len(after) > 0:
                     skip = after[0]

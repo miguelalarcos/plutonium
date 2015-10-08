@@ -164,21 +164,22 @@ def parse(controller, node):
 
 
 class Query(object):
-    def __init__(self, name, sort, skip, limit, **kw):
-        self.name = name
-        self.full_name = str((name, tuple(sorted([('sort', sort)]+[('skip', skip)]+list(kw.items())+[('limit',limit)]))))
-        print(self.full_name)
-
-        self.sort =sort
+    def __init__(self, id, sort, skip, limit, **kw):
+        self.id = id
+        self.full_name = str((self.__class__.__name__, tuple(sorted([('__collection__', self._collection),
+                                                                     ('__sort__', sort), ('__skip__', skip)] +
+                                                                    list(kw.items()) + [('__limit__', limit)]))))
+        self.sort = sort
         self.skip = skip
         self.limit = limit
         for k,v in kw.items():
             setattr(self, k, v)
-        self.models = [A(id=None, x=random.randint(0,999))]
+        self.models = [A(id=None, x=random.randint(0, 999))]
         self.nodes = []
 
 
 class MyQuery(Query):
+    _collection = 'A'
 
     def query(self):
         return {'x': {'$gte': self.a, '$lte': self.b}}
@@ -193,14 +194,14 @@ class Controller(Model):
 
         @reactive
         def f():
-            q = MyQuery(name='0', sort=(('x', 1),), skip=0, limit=1, a=self.a, b=self.b)
+            q = MyQuery(id='0', sort=(('x', 1),), skip=0, limit=1, a=self.a, b=self.b)
             self.subscribe(q)
 
     def x(self):
         return False
 
     def register(self, node):
-        name = node.attr('query-name')
+        name = node.attr('query-id')
         html = node.html()
         node.children().remove()
         self.queries[name].nodes.append((node, html))
@@ -211,7 +212,7 @@ class Controller(Model):
             parse(a, n_)
 
     def subscribe(self, q):
-        name = q.name
+        name = q.id
         previous = Controller.queries.get(name)
         if previous:
             print('stop subscription')
@@ -224,9 +225,12 @@ class Controller(Model):
         Controller.queries[name] = q
 
     def append(self, model, query_full_name):
+        print('model append', query_full_name)
         for query in self.queries.values():
             if query.full_name == query_full_name:
+                print('break')
                 break
+        print('-->', query.full_name)
         query.models.append(model)
         for node, html in query.nodes:
             n_ = pq(html)
@@ -321,7 +325,7 @@ def test_integer_value():
 
 
 def test_register():
-    node = pq('<div class="page"><div id="0" query-name="0" class="template"><span r>{x}</span></div></div>')
+    node = pq('<div class="page"><div id="0" query-id="0" class="template"><span r>{x}</span></div></div>')
     global document
     document = node
     c = Controller(id=None, a=0, b=10)
@@ -330,6 +334,6 @@ def test_register():
     c.a = 1
     print('->', node)
     a = A(id=None, x=-1)
-    c.append(a, "('query', (('a', 1), ('b', 10)))")
+    c.append(a, "('MyQuery', (('__collection__', 'A'), ('__limit__', 1), ('__skip__', 0), ('__sort__', (('x', 1),)), ('a', 1), ('b', 10)))")
     print(node)
     assert False

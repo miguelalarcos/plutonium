@@ -1,8 +1,11 @@
 import sys
 sys.path.insert(0, '.')
+from mock import Mock, MagicMock, call
+sys.modules['browser'] = Mock()
+
 import pytest
 from tornado import gen
-from mock import Mock, MagicMock, call
+
 from server.main.coroutines import broadcast_helper as broadcast
 from  server.main import coroutines
 
@@ -14,7 +17,7 @@ def test_circuit_0():
     total_after = ['0', '1']
     x = yield broadcast({'id': '0'}, total_before, total_after, limit, skip)
 
-    assert x == {'id': '0', '__new__': True}
+    assert x == {'id': '0', '__new__': True, '__position__': ('before', 0)}
 
 @pytest.mark.gen_test
 def test_circuit_0a():
@@ -24,7 +27,7 @@ def test_circuit_0a():
     total_after = ['0']
     x = yield broadcast({'id': '0'}, total_before, total_after, limit, skip)
 
-    assert x == {'id': '0', '__out__': '1', '__new__': True}
+    assert x == {'id': '0', '__out__': '1', '__new__': True, '__position__': ('append', 0)}
 
 @pytest.mark.gen_test
 def test_circuit_1(monkeypatch):
@@ -40,7 +43,7 @@ def test_circuit_1(monkeypatch):
     total_after = ['1']
     x = yield broadcast({'id': '0'}, total_before, total_after, limit, skip)
 
-    assert x == {'id': '1', '__out__': '0', '__new__': True}
+    assert x == {'id': '1', '__out__': '0', '__new__': True, '__position__': ('append', 0)}
 
 
 @pytest.mark.gen_test
@@ -57,7 +60,7 @@ def test_circuit_1a(monkeypatch):
     total_after = ['1']
     x = yield broadcast({'id': '0'}, total_before, total_after, limit, skip)
 
-    assert x == {'id': '1', '__new__': True}
+    assert x == {'id': '1', '__new__': True, '__position__': ('append', 0)}
 
 
 @pytest.mark.gen_test
@@ -96,7 +99,7 @@ def test_modify():
     after = ['0']
     x = yield broadcast({'id': '0'}, before, after, limit, skip)
 
-    assert x == {'id': '0'}
+    assert x == {'id': '0', '__position__': ('append', 0)}
 
 @pytest.mark.gen_test
 def test_new():
@@ -106,7 +109,7 @@ def test_new():
     after = ['0']
     x = yield broadcast({'id': '0'}, before, after, limit, skip)
 
-    assert x == {'id': '0', '__new__': True}
+    assert x == {'id': '0', '__new__': True, '__position__': ('append', 0)}
 
 @pytest.mark.gen_test
 def test_simple_out():
@@ -131,7 +134,7 @@ def test_new_out_previous():
     after = ['0']
     x = yield broadcast({'id': '0'}, before, after, limit, skip)
 
-    assert x == {'id': '0', '__new__': True, '__out__': '1'}
+    assert x == {'id': '0', '__new__': True, '__out__': '1', '__position__': ('append', 0)}
 
 @pytest.mark.gen_test
 def test_basic(monkeypatch):
@@ -147,22 +150,22 @@ def test_basic(monkeypatch):
     total_after = ['-1', '1', '0']
     x = yield broadcast({'id': '0'}, total_before[skip: skip+limit], total_after[skip: skip+limit], limit, skip)
 
-    assert x == {'id': '1', '__out__': '0', '__new__': True}
+    assert x == {'id': '1', '__out__': '0', '__new__': True, '__position__': ('append', 0)}
 
 @pytest.mark.gen_test
 def test_basic2(monkeypatch):
 
     @gen.coroutine
     def f(*args, **kwargs):
-        return {'id': '1'}
+        return {'id': '9'}
 
     monkeypatch.setattr(coroutines, 'do_find_one', f)
 
     skip = 0
     limit = 2
-    tbefore = ['-1', '0', '1']
-    tafter = ['-1', '1', '0']
+    tbefore = ['-1', '0', '9']
+    tafter = ['-1', '9', '0']
     x = yield broadcast({'id': '0'}, tbefore[skip: skip+limit], tafter[skip: skip+limit], limit, skip)
 
-    assert x == {'id': '1', '__out__': '0', '__new__': True}
+    assert x == {'id': '9', '__out__': '0', '__new__': True, '__position__': ('-1', 1)}
 

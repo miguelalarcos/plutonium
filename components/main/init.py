@@ -5,11 +5,17 @@ from components.lib.epochdate import epochargs2datetime
 
 import json
 from components.main.reactive import Model, registered_models, execute_block
-from components.main.page import parse
+from components.main.page import Controller
 
 WebSocket = javascript.JSConstructor(window.WebSocket)
 
 jq = window.jq
+
+
+def set_page_controller(c):
+    global page_controller
+    page_controller = c
+
 
 def on_message(evt):
     try:
@@ -52,13 +58,11 @@ def on_message(evt):
         print ('******************** error', e)
 
 
-def init(controller):
+def init():
     print('iniciando socket')
     ws = WebSocket("ws://127.0.0.1:8888/ws")
     Model.ws = ws
-    controller.ws = ws
-    global page_controller
-    page_controller = controller
+    Controller.ws = ws
 
     ws.bind('message', on_message)
-    parse(page_controller, jq('.page'))
+

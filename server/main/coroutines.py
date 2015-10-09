@@ -169,11 +169,11 @@ def broadcast_helper(item, before, after, limit, collection):
 
     if to_send:
         if to_send['id'] in after:
-            index = index_by_id(after, to_send['id'])
+            index = after.index(to_send['id'])
             if index == 0:
-                if len(after) == 0:
+                if len(after) == 1:
                     position = 'append'
-                elif len(after) > 0:
+                elif len(after) > 1:
                     position = 'before'
             else:
                 position = after[index-1]

@@ -5,6 +5,7 @@ import json
 
 jq = window.jq
 
+
 def is_alive(node):
     return jq.contains(document, node[0])
 
@@ -116,6 +117,7 @@ def parse(controller, node):
                     node.data('helper', [(controller, helper)])
         else:
             if node.hasClass('template'):
+                print('-->', controller)
                 controller.register(node)
             else:
                 for ch in node.children():
@@ -185,11 +187,11 @@ class Controller(Model):
         query_full_name = raw['__query__']
         for query in self.queries.values():
             if query.full_name == query_full_name:
-                if '__new__' in raw.keys():
-                    self.new(model, raw, query)
                 if '__out__' in raw.keys():
                     self.out(raw['__out__'], query)
-                else:
+                if '__new__' in raw.keys():
+                    self.new(model, raw, query)
+                if '__new__' not in raw.keys() and '__out__' not in raw.keys():
                     self.modify(model, raw, query)
 
     def modify(self, model, raw, query):
@@ -241,14 +243,14 @@ class Controller(Model):
                 n_ = jq(html)
                 n_.attr('reactive_id', model.id)
                 node.append(n_)
-        #        parse(model, n_)
+                parse(model, n_)
         elif position == 'before':
             print('BEFORE')
             for node, html in query.nodes:
                 n_ = jq(html)
                 n_.attr('reactive_id', model.id)
                 node.prepend(n_)
-        #        parse(model, n_)
+                parse(model, n_)
         else:
             print('AFTER')
             for node, html in query.nodes:
@@ -256,7 +258,7 @@ class Controller(Model):
                 n_.attr('reactive_id', model.id)
                 ref = node.children("[reactive_id='"+ref+"']")
                 ref.after(n_)
-        parse(model, n_)
+                parse(model, n_)
 
     #@staticmethod
     #def compare(a, b, key, order=1):

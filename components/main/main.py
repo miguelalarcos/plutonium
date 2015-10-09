@@ -10,10 +10,10 @@ window.jq = jq
 import random
 print('Iniciando aplicación')
 from components.main.models.A import A
-from components.main.init import init
+from components.main.init import init, set_page_controller
 
 from components.main.reactive import reactive
-from components.main.page import Controller
+from components.main.page import Controller, parse
 from components.main.queries.my_query import MyQuery
 
 
@@ -21,7 +21,7 @@ from components.main.queries.my_query import MyQuery
 class MyController(Controller):
     def __init__(self, id, *args, **kwargs):
         super().__init__(id, *args, **kwargs)
-
+        set_page_controller(self)
         @reactive
         def f():
             q = MyQuery(id='0', sort=(('x', 1),), skip=0, limit=1, a=self.a, b=self.b)
@@ -30,8 +30,9 @@ class MyController(Controller):
     def x(self):
         return False
 
-init(MyController(id='my controller', a=0, b=10))
-
+init()
+page_controller = MyController(id='my controller', a=0, b=10)
+parse(page_controller, jq('.page'))
 """
 button_send = jq('#button')
 sent_initial_data = False

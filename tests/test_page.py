@@ -166,7 +166,14 @@ def test_register():
 
     c.a = 1
 
-    a = A(id=None, x=-1)
+    a = A(id='000', x=-1)
+    a2 = A(id='111', x= 800)
     c.test(a, {'x': 1, '__new__': True}, "('MyQuery', (('__collection__', 'A'), ('__limit__', 1), ('__skip__', 0), ('__sort__', (('x', 1),)), ('a', 1), ('b', 10)))")
-    print(node)
+    print('->', node)
+    c.test(a, {'x':0, '__out__': True}, "('MyQuery', (('__collection__', 'A'), ('__limit__', 1), ('__skip__', 0), ('__sort__', (('x', 1),)), ('a', 1), ('b', 10)))")
+    print('->', node)
+
+    c.test(a, {'x': 1, '__new__': True}, "('MyQuery', (('__collection__', 'A'), ('__limit__', 1), ('__skip__', 0), ('__sort__', (('x', 1),)), ('a', 1), ('b', 10)))")
+    c.test(a2, {'x':0, '__new__': True, '__skip__': '111'}, "('MyQuery', (('__collection__', 'A'), ('__limit__', 1), ('__skip__', 0), ('__sort__', (('x', 1),)), ('a', 1), ('b', 10)))")
+    print('->', node)
     assert False

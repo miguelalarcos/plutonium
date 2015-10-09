@@ -49,7 +49,6 @@ def set_events(controller, node, attrs):
     on_click = attrs.get('on-click')
     if on_click:
         on_click = on_click[1:-1]
-        print(attrs, on_click)
         method = getattr(controller, on_click)
         node.click(method)
     integer_value = attrs.get('integer-value')
@@ -118,9 +117,7 @@ def parse(controller, node):
                 controller.register(node)
             else:
                 for ch in node.children():
-                    print ('a)', ch)
                     ch = jq(ch)
-                    print ('b)', ch)
                     parse(controller, ch)
 
 
@@ -175,21 +172,19 @@ class Controller(Model):
             if query.full_name == query_full_name:
                 if '__new__' in raw.keys():
                     self.new(model, raw, query)
-                elif '__out__' in raw.keys():
-                    self.out(model, query)
+                if '__out__' in raw.keys():
+                    self.out(raw['__out__'], query)
                 else:
                     self.modify(model, query)
 
     def modify(self, model, query):
         index = self.index_by_id(model.id, query.models)
-        print(model.id, query.models, index)
         del query.models[index]
         tupla = self.index_in_DOM(model)
 
         if index == tupla[0]:
-            print('ocupa misma posicion')
+            pass
         else:
-            print('move to ', model, tupla)
             for node, html in query.nodes:
                 n_ = node.children("[reactive_id='"+str(model.id)+"']")
                 ref = node.children("[reactive_id='"+str(tupla[2])+"']")
@@ -205,11 +200,11 @@ class Controller(Model):
     def index_by_id(self, id, models):
         return index_by_id(models, id)
 
-    def out(self, model, query):
-        index = self.index_by_id(model.id, query.models)
+    def out(self, _id, query):
+        index = self.index_by_id(_id, query.models)
         del query.models[index]
         for node, html in query.nodes:
-            node.children("[reactive_id='"+str(model.id)+"']").remove()
+            node.children("[reactive_id='"+str(_id)+"']").remove()
 
     def new(self, model, raw, query):
         tupla = self.index_in_DOM(model, query)
@@ -218,12 +213,14 @@ class Controller(Model):
 
         action = tupla[1]
         if action == 'append':
+            print('APPEND')
             for node, html in query.nodes:
                 n_ = jq(html)
                 n_.attr('reactive_id', model.id)
                 node.append(n_)
                 parse(model, n_)
         elif action == 'before':
+            print('BEFORE')
             for node, html in query.nodes:
                 n_ = jq(html)
                 n_.attr('reactive_id', model.id)
@@ -231,6 +228,7 @@ class Controller(Model):
                 ref.before(n_)
                 parse(model, n_)
         elif action == 'after':
+            print('AFTER')
             for node, html in query.nodes:
                 n_ = jq(html)
                 n_.attr('reactive_id', model.id)
@@ -238,18 +236,12 @@ class Controller(Model):
                 ref.after(n_)
                 parse(model, n_)
 
-        if len(query.models) > query.limit:
-            if raw['__skip__'] != query.models[0].id:
-                self.out(query.models[0])
-            else:
-                self.out(query.models[-1])
-
     @staticmethod
     def compare(a, b, key, order=1):
         return compare(a, b, key, order)
 
     def index_in_DOM(self, model, query):
-        ret = index_in_list(query.models, query.sort, model)
+        ret = index_in_list(query.models, list(query.sort), model)
         if ret == 0 and len(query.models) == 0:
             return (0, 'append')
         if ret == 0:

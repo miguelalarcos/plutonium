@@ -134,37 +134,44 @@ def broadcast(item):
                 continue
             after = yield do_find(filt, {'_id': 1})
             after = [x['id'] for x in after]
-
-            to_send = None
-            if item['id'] in after:
-                to_send = item
-            else:
-                tupla = []
-                if len(after) == 1:
-                    tupla = (0, )
-                elif len(after) > 1:
-                    tupla = (0, -1)
-                for index in tupla:
-                    id = after[index]
-                    if id not in filt.before:
-                        doc = yield do_find_one(collection, id)
-                        to_send = doc
-                        break
-            if not to_send and item['id'] in filt.before:
-                to_send = item
-                to_send['__out__'] = True
-
+            before = filt.before
+            to_send = yield broadcast_helper(item, before, after, filt.limit, collection )
             if to_send:
-                if to_send['id'] not in filt.before:
-                    to_send['__new__'] = True
-                to_send['__filter__'] = filt.full_name
-                if len(after) > 0:
-                    skip = after[0]
-                else:
-                    skip = '-1'
-                to_send['__skip__'] = skip
-                print('to send', to_send)
                 yield q_send.put((client.socket, to_send))
+
+
+@gen.coroutine
+def broadcast_helper(item, before, after, limit, collection):
+    to_send = None
+    if item['id'] in after:
+        to_send = item
+        if len(before) == limit and item['id'] not in before:
+            if after[0] != before[0]:
+                to_send['__out__'] = before[0]
+            else:
+                to_send['__out__'] = before[-1]
+    else:
+        tupla = []
+        if len(after) == 1:
+            tupla = (0, )
+        elif len(after) > 1:
+            tupla = (0, -1)
+        for index in tupla:
+            id = after[index]
+            if id not in before:
+                doc = yield do_find_one(collection, id)
+                to_send = doc
+                to_send['__out__'] = item['id']
+                break
+    if not to_send and item['id'] in before:
+        to_send = item
+        to_send['__out__'] = item['id']
+
+    if to_send:
+        if to_send['id'] not in before:
+            to_send['__new__'] = True
+
+    return to_send
 
 
 @gen.coroutine

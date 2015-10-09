@@ -26,6 +26,56 @@ def test_circuit_0a():
 
     assert x == {'id': '0', '__out__': '1', '__new__': True}
 
+@pytest.mark.gen_test
+def test_circuit_1(monkeypatch):
+    @gen.coroutine
+    def f(*args, **kwargs):
+        return {'id': '1'}
+
+    monkeypatch.setattr(coroutines, 'do_find_one', f)
+
+    skip = 1
+    limit = 1
+    total_before = ['0']
+    total_after = ['1']
+    x = yield broadcast({'id': '0'}, total_before, total_after, limit, skip)
+
+    assert x == {'id': '1', '__out__': '0', '__new__': True}
+
+
+@pytest.mark.gen_test
+def test_circuit_1a(monkeypatch):
+    @gen.coroutine
+    def f(*args, **kwargs):
+        return {'id': '1'}
+
+    monkeypatch.setattr(coroutines, 'do_find_one', f)
+
+    skip = 1
+    limit = 1
+    total_before = ['2']
+    total_after = ['1']
+    x = yield broadcast({'id': '0'}, total_before, total_after, limit, skip)
+
+    assert x == {'id': '1', '__new__': True}
+
+
+@pytest.mark.gen_test
+def test_circuit_2(monkeypatch):
+    @gen.coroutine
+    def f(*args, **kwargs):
+        return {'id': '1'}
+
+    monkeypatch.setattr(coroutines, 'do_find_one', f)
+
+    skip = 1
+    limit = 1
+    total_before = ['0', '1', '2']
+    total_after = ['0', '2']
+    x = yield broadcast({'id': '1'}, total_before, total_after, limit, skip)
+
+    assert x == {'id': '1', '__out__': '1'}
+
 # ################
 
 @pytest.mark.gen_test

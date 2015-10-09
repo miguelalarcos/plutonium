@@ -161,7 +161,8 @@ def broadcast_helper(item, before, after, limit, collection):
             if id not in before:
                 doc = yield do_find_one(collection, id)
                 to_send = doc
-                to_send['__out__'] = item['id']
+                if item['id'] in before:
+                    to_send['__out__'] = item['id']
                 break
     if not to_send and item['id'] in before:
         to_send = item

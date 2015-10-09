@@ -3,14 +3,14 @@ class Client(object):
 
     def __init__(self, socket):
         self.socket = socket
-        self.filters = {}
+        self.queries = {}
         Client.clients[socket] = self
 
-    def add_filter(self, filter):
-        if filter.stop:
-            del self.filters[filter.stop]
+    def add_query(self, query):
+        if query.stop:
+            del self.queries[query.stop]
 
-        self.filters[filter.full_name] = filter
+        self.queries[query.full_name] = query
 
     @classmethod
     def remove_client(cls, client):

@@ -4,11 +4,12 @@ import javascript
 from components.lib.epochdate import epochargs2datetime
 
 import json
-from components.main.reactive import consume, Model, registered_models, execute_block
-from components.main.controller import BaseController
+from components.main.reactive import Model, registered_models, execute_block
+from components.main.page import parse
 
 WebSocket = javascript.JSConstructor(window.WebSocket)
 
+jq = window.jq
 
 def on_message(evt):
     try:
@@ -16,10 +17,13 @@ def on_message(evt):
         print('raw', result)
         data = json.loads(result)
         data = epochargs2datetime(data)
-        collection = data.pop('__collection__')
-        filter_name = data.pop('__filter__')
         raw = data.copy()
-        #data.pop('__skip__')
+        collection = data.pop('__collection__')
+        filter_name = data.pop('__query__')
+        position = data.pop('__position__', None)
+        out = data.pop('__out__', None)
+        new = data.pop('__new__', None)
+
         klass = registered_models[collection]
         print('buscamos si ya tenemos el objeto con id', data['id'])
         try:
@@ -27,7 +31,7 @@ def on_message(evt):
             print('encontrado')
             with execute_block():
                 for k, v in data.items():
-                    if k in ('id', '__deleted__'):
+                    if k in ('id', '__deleted__'): # es necesario deleted??
                         continue
                     setattr(model, '_'+k, v)
         except KeyError:
@@ -41,20 +45,20 @@ def on_message(evt):
             model = klass(**data_)
 
         print('test all controllers')
-        r = []
-        for c in BaseController.controllers.values():
-            if c.filter_full_name == filter_name:
-                r.append(c.test(model, raw))
-        if all(r):
-            del klass.objects[model.id]
+        page_controller.test(model, raw)
+        #if all(r):
+        #    del klass.objects[model.id]
     except Exception as e:
         print ('******************** error', e)
 
 
-def init():
+def init(controller):
     print('iniciando socket')
     ws = WebSocket("ws://127.0.0.1:8888/ws")
     Model.ws = ws
-    BaseController.ws = ws
+    controller.ws = ws
+    global page_controller
+    page_controller = controller
 
     ws.bind('message', on_message)
+    parse(page_controller, jq('.page'))

@@ -1,7 +1,9 @@
 import re
 from components.main.reactive import Model, reactive
-from components.lib.utils import index_by_id, compare, index_in_list
+from browser import window
+import json
 
+jq = window.jq
 
 def is_alive(node):
     return jq.contains(document, node[0])
@@ -122,8 +124,9 @@ def parse(controller, node):
 
 
 class Query(object):
-    def __init__(self, id, sort, skip, limit, **kw):
+    def __init__(self, id, sort, skip, limit, stop=None, **kw):
         self.id = id
+        self.name = self.__class__.__name__
         self.full_name = str((self.__class__.__name__, tuple(sorted([('__collection__', self._collection),
                                                                      ('__sort__', sort), ('__skip__', skip)] +
                                                                     list(kw.items()) + [('__limit__', limit)]))))
@@ -134,13 +137,22 @@ class Query(object):
             setattr(self, k, v)
         self.models = []
         self.nodes = []
+        self.stop = stop
+
+    def dumps(self):
+        arg = {}
+        arg['__query__'] = self.name
+        arg['__sort__'] = self.sort
+        arg['__skip__'] = self.skip
+        arg['__limit__'] = self.limit
+        if self.stop:
+            arg['__stop__'] = self.stop
+        return json.dumps(arg)
 
 
 class Controller(Model):
     objects = {}
     queries = {}
-
-
 
     def register(self, node):
         name = node.attr('query-id')
@@ -159,6 +171,7 @@ class Controller(Model):
         previous = Controller.queries.get(name)
         if previous:
             print('stop subscription')
+            q.stop = previous.full_name
             q.nodes = previous.nodes
             for node, _ in q.nodes:
                 if node.data('helper'):
@@ -166,8 +179,10 @@ class Controller(Model):
                         c.reset(h)
                 node.children().remove()
         Controller.queries[name] = q
+        self.ws.send(q.dumps())
 
-    def test(self, model, raw, query_full_name):
+    def test(self, model, raw):
+        query_full_name = raw['__query__']
         for query in self.queries.values():
             if query.full_name == query_full_name:
                 if '__new__' in raw.keys():
@@ -175,30 +190,34 @@ class Controller(Model):
                 if '__out__' in raw.keys():
                     self.out(raw['__out__'], query)
                 else:
-                    self.modify(model, query)
+                    self.modify(model, raw, query)
 
-    def modify(self, model, query):
+    def modify(self, model, raw, query):
         index = self.index_by_id(model.id, query.models)
         del query.models[index]
-        tupla = self.index_in_DOM(model)
 
-        if index == tupla[0]:
-            pass
+        position = raw['__position__']
+        if position == 'before':
+            index = 0
         else:
-            for node, html in query.nodes:
-                n_ = node.children("[reactive_id='"+str(model.id)+"']")
-                ref = node.children("[reactive_id='"+str(tupla[2])+"']")
-                action = tupla[1]
-                if action == 'before':
-                    ref.before(n_)
-                else:
-                    ref.after(n_)
-                parse(model, n_)
+            ref, index = position
+        for node, html in query.nodes:
+            n_ = node.children("[reactive_id='"+str(model.id)+"']")
+            if position == 'before':
+                node.prepend(n_)
+            else:
+                ref = node.children("[reactive_id='"+ref+"']")
+                ref.after(n_)
+            parse(model, n_)
 
-        query.models.insert(tupla[0], model)
+        query.models.insert(index, model)
 
     def index_by_id(self, id, models):
-        return index_by_id(models, id)
+        lista = []
+        for item in models:
+            lista.append(item.id)
+        return lista.index(id)
+        #return index_by_id(models, id)
 
     def out(self, _id, query):
         index = self.index_by_id(_id, query.models)
@@ -207,44 +226,47 @@ class Controller(Model):
             node.children("[reactive_id='"+str(_id)+"']").remove()
 
     def new(self, model, raw, query):
-        tupla = self.index_in_DOM(model, query)
-        index = tupla[0]
+        #tupla = self.index_in_DOM(model, query)
+        #index = tupla[0]
+        position = raw['__position__']
+        if position in ('before', 'append'):
+            index = 0
+        else:
+            ref, index = position
         query.models.insert(index, model)
 
-        action = tupla[1]
-        if action == 'append':
+        if position == 'append':
             print('APPEND')
             for node, html in query.nodes:
                 n_ = jq(html)
                 n_.attr('reactive_id', model.id)
                 node.append(n_)
-                parse(model, n_)
-        elif action == 'before':
+        #        parse(model, n_)
+        elif position == 'before':
             print('BEFORE')
             for node, html in query.nodes:
                 n_ = jq(html)
                 n_.attr('reactive_id', model.id)
-                ref = node.children("[reactive_id='"+str(tupla[2])+"']")
-                ref.before(n_)
-                parse(model, n_)
-        elif action == 'after':
+                node.prepend(n_)
+        #        parse(model, n_)
+        else:
             print('AFTER')
             for node, html in query.nodes:
                 n_ = jq(html)
                 n_.attr('reactive_id', model.id)
-                ref = node.children("[reactive_id='"+str(tupla[2])+"']")
+                ref = node.children("[reactive_id='"+ref+"']")
                 ref.after(n_)
-                parse(model, n_)
+        parse(model, n_)
 
-    @staticmethod
-    def compare(a, b, key, order=1):
-        return compare(a, b, key, order)
+    #@staticmethod
+    #def compare(a, b, key, order=1):
+    #    return compare(a, b, key, order)
 
-    def index_in_DOM(self, model, query):
-        ret = index_in_list(query.models, list(query.sort), model)
-        if ret == 0 and len(query.models) == 0:
-            return (0, 'append')
-        if ret == 0:
-            return (0, 'before', query.models[0].id)
-        else:
-            return (ret, 'after', query.models[ret-1].id)
+    #def index_in_DOM(self, model, query):
+    #    ret = index_in_list(query.models, list(query.sort), model)
+    #    if ret == 0 and len(query.models) == 0:
+    #        return (0, 'append')
+    #    if ret == 0:
+    #        return (0, 'before', query.models[0].id)
+    #    else:
+    #        return (ret, 'after', query.models[ret-1].id)

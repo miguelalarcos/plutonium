@@ -3,7 +3,7 @@ from components.main.reactive import Model, register
 
 @register
 class A(Model):
-    def bool(self):
+    def flag(self):
         return self.x == 9
 
     def minus(self):

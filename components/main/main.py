@@ -30,9 +30,12 @@ class MyController(Controller):
     def x(self):
         return False
 
-init()
-page_controller = MyController(id='my controller', a=0, b=10)
-parse(page_controller, jq('.page'))
+def main():
+    print('main')
+    page_controller = MyController(id='my controller', a=0, b=10)
+    parse(page_controller, jq('.page'))
+
+init(main)
 """
 button_send = jq('#button')
 sent_initial_data = False

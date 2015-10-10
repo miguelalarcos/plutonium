@@ -1,6 +1,6 @@
 import re
 from components.main.reactive import Model, reactive
-from browser import window
+from browser import window, document
 import json
 
 jq = window.jq
@@ -24,12 +24,15 @@ def if_function(controller, if_, node, html):
                         c.reset(h)
             node.children().remove()
         else:
-            if len(node.children()) == 0:
+            #if len(node.children()) == 0:
+            if node.childrend().length == 0:
                 children = jq(html)
+                print('primer append')
                 node.append(children)
                 for ch in children:
                     parse(controller, jq(ch))
-            elif len(node.children()) == 1:
+            #elif len(node.children()) == 1:
+            elif node.children().length == 1:
                 parse(controller, node.children())
 
 
@@ -45,7 +48,7 @@ def render(model, node, template):
             dct[attr] = getattr(model, attr)
 
         node.html(template.format(**dct))
-        print('>', node)
+        print('>', node.html())
 
 
 def set_events(controller, node, attrs):
@@ -107,12 +110,20 @@ def parse(controller, node):
             helper = reactive(set_attributes, controller, node, dct)
             node.data('helper', [(controller, helper)])
             set_events(controller, node, dct)
-        if len(node.children()) == 0:
+        print('->', node.children())
+        print(node.children().length)
+        #if len(node.children()) == 0:
+        if node.children().length == 0:
             if node.attr('r') == '':
                 helper = reactive(render, controller, node, node.html())
                 lista = node.data('helper')
                 if lista:
-                    lista.append((controller, helper))
+                    lista_ = []
+                    for item in lista:
+                        lista_.append(item)
+                    lista_.append((controller, helper))
+                    node.data('helper', lista_)
+                    #lista.append((controller, helper))
                 else:
                     node.data('helper', [(controller, helper)])
         else:
@@ -125,46 +136,23 @@ def parse(controller, node):
                     parse(controller, ch)
 
 
-class Query(object):
-    def __init__(self, id, sort, skip, limit, stop=None, **kw):
-        self.id = id
-        self.name = self.__class__.__name__
-        self.full_name = str((self.__class__.__name__, tuple(sorted([('__collection__', self._collection),
-                                                                     ('__sort__', sort), ('__skip__', skip)] +
-                                                                    list(kw.items()) + [('__limit__', limit)]))))
-        self.sort = sort
-        self.skip = skip
-        self.limit = limit
-        for k,v in kw.items():
-            setattr(self, k, v)
-        self.models = []
-        self.nodes = []
-        self.stop = stop
-
-    def dumps(self):
-        arg = {}
-        arg['__query__'] = self.name
-        arg['__sort__'] = self.sort
-        arg['__skip__'] = self.skip
-        arg['__limit__'] = self.limit
-        if self.stop:
-            arg['__stop__'] = self.stop
-        return json.dumps(arg)
-
-
 class Controller(Model):
     objects = {}
     queries = {}
 
     def register(self, node):
+        print('register')
+        #node = jq(node)
         name = node.attr('query-id')
         html = node.html()
         node.children().remove()
 
+        print('segunda lista append')
         self.queries[name].nodes.append((node, html))
         for a in self.queries[name].models:
             n_ = jq(html)
             n_.attr('reactive_id', a.id)
+            print('segundo append')
             node.append(n_)
             parse(a, n_)
 
@@ -187,6 +175,7 @@ class Controller(Model):
         query_full_name = raw['__query__']
         for query in self.queries.values():
             if query.full_name == query_full_name:
+                print(raw)
                 if '__out__' in raw.keys():
                     self.out(raw['__out__'], query)
                 if '__new__' in raw.keys():
@@ -228,8 +217,7 @@ class Controller(Model):
             node.children("[reactive_id='"+str(_id)+"']").remove()
 
     def new(self, model, raw, query):
-        #tupla = self.index_in_DOM(model, query)
-        #index = tupla[0]
+        print('new', raw)
         position = raw['__position__']
         if position in ('before', 'append'):
             index = 0
@@ -240,9 +228,14 @@ class Controller(Model):
         if position == 'append':
             print('APPEND')
             for node, html in query.nodes:
+                html = html.strip()
+                print('llego', ord(html[0]))
                 n_ = jq(html)
+                print('llego2')
                 n_.attr('reactive_id', model.id)
+                print('llego3', 'tercer append')
                 node.append(n_)
+                print('llego4')
                 parse(model, n_)
         elif position == 'before':
             print('BEFORE')

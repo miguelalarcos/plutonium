@@ -4,7 +4,9 @@ import javascript
 from components.lib.epochdate import epochargs2datetime
 
 import json
-from components.main.reactive import Model, registered_models, execute_block
+from components.main.reactive import Model, execute_block
+import components.load_models
+from components.register_model import registered_models
 from components.main.page import Controller
 
 WebSocket = javascript.JSConstructor(window.WebSocket)
@@ -58,11 +60,12 @@ def on_message(evt):
         print ('******************** error', e)
 
 
-def init():
+def init(main):
     print('iniciando socket')
     ws = WebSocket("ws://127.0.0.1:8888/ws")
     Model.ws = ws
     Controller.ws = ws
 
     ws.bind('message', on_message)
+    ws.onopen = main
 

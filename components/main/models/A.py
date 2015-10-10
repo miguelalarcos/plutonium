@@ -1,4 +1,5 @@
-from components.main.reactive import Model, register
+from components.main.reactive import Model
+from components.register_model import register
 
 
 @register

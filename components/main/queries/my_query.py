@@ -1,9 +1,9 @@
-from components.main.page import Query
-from components.query import register_query
+from components.main.query import Query
+from components.register_query import register
 
-@register_query
+@register
 class MyQuery(Query):
-    _collection = 'A'
+    collection = 'A'
 
     def query(self):
         return {'x': {'$gte': self.a, '$lte': self.b}}

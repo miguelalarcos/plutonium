@@ -9,7 +9,8 @@ from server.main.validation import validate
 from server.main.task import registered_tasks
 #from components.main.page import Query
 #from components.lib.utils import index_by_id
-from components.query import registered_queries
+import components.load_queries
+from components.register_query import registered_queries
 
 db = motor.MotorClient().test_database
 
@@ -38,7 +39,7 @@ def do_find(query, projection=None): #
     else:
         cursor = db[query.collection].find(query.query())
     if query.sort:
-        cursor.sort(query.order)
+        cursor.sort(query.sort)
     cursor.skip(query.skip)
     if query.limit:
         cursor.limit(query.limit)
@@ -57,6 +58,7 @@ def handle_query(item):
     client_socket = item.pop('__client__')
     client = Client.clients[client_socket]
     sort = item.pop('__sort__')
+    sort = tuple([tuple(x) for x in sort])
     skip = item.pop('__skip__')
     limit = item.pop('__limit__')
     stop = item.pop('__stop__', None)
@@ -66,6 +68,9 @@ def handle_query(item):
 
     ret = yield do_find(query)
     if len(ret) > 0:
+        for r in ret:
+            r['__new__'] = True
+            r['__position__'] = 'append'
         ret = [(client.socket, r) for r in ret]
         yield q_send.put(ret)
 

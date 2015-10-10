@@ -27,7 +27,6 @@ class SocketHandler(websocket.WebSocketHandler):
         item = json.loads(message)
         item = epochargs2datetime(item)
         item['__client__'] = self
-        print('yield: q_mongo.put()')
         yield q_mongo.put(item)
 
 

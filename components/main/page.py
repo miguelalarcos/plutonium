@@ -57,6 +57,7 @@ def set_events(controller, node, attrs):
         on_click = on_click[1:-1]
         method = getattr(controller, on_click)
         node.click(method)
+
     integer_value = attrs.get('integer-value')
     if integer_value:
         integer_value = integer_value[1:-1]
@@ -218,28 +219,25 @@ class Controller(Model):
 
     def new(self, model, raw, query):
         print('new', raw)
-        position = raw['__position__']
-        if position in ('before', 'append'):
-            index = 0
-        else:
-            ref, index = position
+        ref, index = raw['__position__']
+        #if position in ('before', 'append'):
+        #    index = 0
+        #else:
+        #    ref, index = position
         query.models.insert(index, model)
 
-        if position == 'append':
+        if ref == 'append':
             print('APPEND')
             for node, html in query.nodes:
                 html = html.strip()
-                print('llego', ord(html[0]))
                 n_ = jq(html)
-                print('llego2')
                 n_.attr('reactive_id', model.id)
-                print('llego3', 'tercer append')
                 node.append(n_)
-                print('llego4')
                 parse(model, n_)
-        elif position == 'before':
+        elif ref == 'before':
             print('BEFORE')
             for node, html in query.nodes:
+                html = html.strip()
                 n_ = jq(html)
                 n_.attr('reactive_id', model.id)
                 node.prepend(n_)
@@ -247,21 +245,10 @@ class Controller(Model):
         else:
             print('AFTER')
             for node, html in query.nodes:
+                html = html.strip()
                 n_ = jq(html)
                 n_.attr('reactive_id', model.id)
                 ref = node.children("[reactive_id='"+ref+"']")
                 ref.after(n_)
                 parse(model, n_)
 
-    #@staticmethod
-    #def compare(a, b, key, order=1):
-    #    return compare(a, b, key, order)
-
-    #def index_in_DOM(self, model, query):
-    #    ret = index_in_list(query.models, list(query.sort), model)
-    #    if ret == 0 and len(query.models) == 0:
-    #        return (0, 'append')
-    #    if ret == 0:
-    #        return (0, 'before', query.models[0].id)
-    #    else:
-    #        return (ret, 'after', query.models[ret-1].id)

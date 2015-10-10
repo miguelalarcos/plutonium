@@ -70,8 +70,9 @@ def handle_query(item):
     if len(ret) > 0:
         for r in ret:
             r['__new__'] = True
-            r['__position__'] = 'append'
+            r['__position__'] = ('append', 0)
         ret = [(client.socket, r) for r in ret]
+        print('to send when query', ret)
         yield q_send.put(ret)
 
     return
@@ -142,6 +143,8 @@ def broadcast(item):
             before = query.before
             to_send = yield broadcast_helper(item, before, after, query.limit, collection )
             if to_send:
+                print('to_send', to_send)
+                to_send['__query__'] = query.full_name
                 yield q_send.put((client.socket, to_send))
 
 

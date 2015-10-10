@@ -20,5 +20,10 @@ class A(Model):
     def validate_x(self):
         return type(self.x) == int and self.x > 0
 
+    def red_if_negative(self):
+        if self.x < 0:
+            return 'red'
+        return ''
+
 
 

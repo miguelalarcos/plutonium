@@ -5,7 +5,9 @@
       <span>hello :)</span>
       <div query-id="my_query" class="template">
           <div class="model">
-              <span r>id:{id}</span> <b r>x:{x}</b> <input type="text" r integer-value="{x}">
+              <span r class="{red_if_negative}">id:{id}</span> <b r>x:{x}</b> <input type="text" r integer-value="{x}">
+              <button r on-click="{minus}">minus</button>
+              <button r on-click="{plus}">plus</button>
           </div>
       </div>
     </div>

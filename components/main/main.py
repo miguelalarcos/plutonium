@@ -32,7 +32,7 @@ class MyController(Controller):
 
 def main():
     print('main')
-    page_controller = MyController(id='my controller', a=0, b=10)
+    page_controller = MyController(id='my controller', a=-1, b=10)
     parse(page_controller, jq('.page'))
 
 init(main)

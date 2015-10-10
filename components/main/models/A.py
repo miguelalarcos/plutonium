@@ -18,12 +18,15 @@ class A(Model):
         self.save()
 
     def validate_x(self):
-        return type(self.x) == int and self.x > 0
+        return type(self.x) == int and self.x >= -1
 
     def red_if_negative(self):
         if self.x < 0:
             return 'red'
         return ''
+
+    def show_minus(self):
+        return self.x != -1
 
 
 

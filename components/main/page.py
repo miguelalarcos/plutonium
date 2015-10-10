@@ -11,11 +11,12 @@ def is_alive(node):
 
 
 def if_function(controller, if_, node, html):
-    print('if function', if_, node)
+    print('if function', if_)
     if is_alive(node):
         val = getattr(controller, if_)
         if callable(val):
             val = val()
+        print(val)
         if not val:
             for ch in node.find('[r]'):
                 ch = jq(ch)
@@ -24,20 +25,16 @@ def if_function(controller, if_, node, html):
                         c.reset(h)
             node.children().remove()
         else:
-            #if len(node.children()) == 0:
-            if node.childrend().length == 0:
+            if node.children().length == 0:
                 children = jq(html)
-                print('primer append')
                 node.append(children)
                 for ch in children:
                     parse(controller, jq(ch))
-            #elif len(node.children()) == 1:
             elif node.children().length == 1:
                 parse(controller, node.children())
 
 
 def render(model, node, template):
-    #print('render:', template)
     if template is None:
         return
     if is_alive(node):
@@ -52,6 +49,8 @@ def render(model, node, template):
 
 
 def set_events(controller, node, attrs):
+    print('set events', attrs)
+    node.unbind() # debo intentar llamar a set_events sin necesidad de hacer unbind
     on_click = attrs.get('on-click')
     if on_click:
         on_click = on_click[1:-1]
@@ -91,7 +90,6 @@ def set_attributes(controller, node, attrs):
 
 
 def parse(controller, node):
-    print('parse', node)
     if_ = node.attr('if')
     if if_:
         if_ = if_[1:-1]
@@ -111,9 +109,6 @@ def parse(controller, node):
             helper = reactive(set_attributes, controller, node, dct)
             node.data('helper', [(controller, helper)])
             set_events(controller, node, dct)
-        print('->', node.children())
-        print(node.children().length)
-        #if len(node.children()) == 0:
         if node.children().length == 0:
             if node.attr('r') == '':
                 helper = reactive(render, controller, node, node.html())
@@ -124,12 +119,10 @@ def parse(controller, node):
                         lista_.append(item)
                     lista_.append((controller, helper))
                     node.data('helper', lista_)
-                    #lista.append((controller, helper))
                 else:
                     node.data('helper', [(controller, helper)])
         else:
             if node.hasClass('template'):
-                print('-->', controller)
                 controller.register(node)
             else:
                 for ch in node.children():
@@ -142,18 +135,14 @@ class Controller(Model):
     queries = {}
 
     def register(self, node):
-        print('register')
-        #node = jq(node)
         name = node.attr('query-id')
         html = node.html()
         node.children().remove()
 
-        print('segunda lista append')
         self.queries[name].nodes.append((node, html))
         for a in self.queries[name].models:
             n_ = jq(html)
             n_.attr('reactive_id', a.id)
-            print('segundo append')
             node.append(n_)
             parse(a, n_)
 
@@ -161,7 +150,6 @@ class Controller(Model):
         name = q.id
         previous = Controller.queries.get(name)
         if previous:
-            print('stop subscription')
             q.stop = previous.full_name
             q.nodes = previous.nodes
             for node, _ in q.nodes:

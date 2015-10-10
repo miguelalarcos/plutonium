@@ -1,4 +1,4 @@
-from components.main.models import A
+import server.main.load_models
 from components.main.reactive import registered_models
 
 

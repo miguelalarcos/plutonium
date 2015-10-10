@@ -24,7 +24,7 @@ class MyController(Controller):
         set_page_controller(self)
         @reactive
         def f():
-            q = MyQuery(id='0', sort=(('x', 1),), skip=0, limit=1, a=self.a, b=self.b)
+            q = MyQuery(id='my_query', sort=(('x', 1),), skip=0, limit=1, a=self.a, b=self.b)
             self.subscribe(q)
 
     def x(self):

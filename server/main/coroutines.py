@@ -7,8 +7,9 @@ from server.main.client import Client
 from server.main.DB import DB
 from server.main.validation import validate
 from server.main.task import registered_tasks
-from components.main.page import Query
-from components.lib.utils import index_by_id
+#from components.main.page import Query
+#from components.lib.utils import index_by_id
+from components.query import registered_queries
 
 db = motor.MotorClient().test_database
 
@@ -48,7 +49,6 @@ def do_find(query, projection=None): #
         document['__query__'] = query.full_name
         document['id'] = document['_id']
         del document['_id']
-    print('do find', ret)
     return ret
 
 
@@ -60,7 +60,8 @@ def handle_query(item):
     skip = item.pop('__skip__')
     limit = item.pop('__limit__')
     stop = item.pop('__stop__', None)
-    query = Query(id=None, sort=sort, skip=skip, limit=limit, stop=stop, **item)
+    name = item.pop('__query__')
+    query = registered_queries[name](id=None, sort=sort, skip=skip, limit=limit, stop=stop, **item)
     client.add_query(query)
 
     ret = yield do_find(query)

@@ -4,7 +4,7 @@ import json
 from components.lib.epochdate import epochargs2datetime
 from server.main.coroutines import mongo_consumer, sender, q_mongo
 from server.main.client import Client
-import server.main.load_filters
+#import server.main.load_filters
 
 class MainHandler(web.RequestHandler):
     def get(self):

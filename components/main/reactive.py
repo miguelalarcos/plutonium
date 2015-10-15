@@ -161,3 +161,55 @@ class Model(object):
 
             if do_consume:
                 consume()
+
+
+# ##########
+class Reactive(object):
+    def __init__(self, **kw):
+        self._dep = []
+        def set_values():
+            for k, v in kw.items():
+                setattr(self, k, v)
+
+        if do_consume:
+            with execute_block():
+                set_values()
+        else:
+            set_values()
+
+    def __call__(self, *args, **kwargs):
+        return self
+
+    def reset(self, func):
+        ret = []
+        for item in self._dep:
+            if item['call'] != func:
+                ret.append(item)
+        self._dep = ret
+
+    def __getattr__(self, name):
+        if name not in self.reactives:
+            raise AttributeError(name)
+
+        if current_call is not None:
+            self._dep.append({'call': current_call, 'attr': name})
+            add_to_map(self)
+
+        return self.__dict__['_'+name]
+
+    def __setattr__(self, key, value):
+        if key not in self.reactives:
+            self.__dict__[key] = value
+            return
+
+        if key in self.reactives and '_'+key not in self.__dict__.keys():
+            self.__dict__['_'+key] = None
+
+        if value != self.__dict__['_'+key]:
+            self.__dict__['_'+key] = value
+            for item in self._dep:
+                if item['attr'] == key and item['call'] not in execute:
+                    execute.append(item['call'])
+
+            if do_consume:
+                consume()

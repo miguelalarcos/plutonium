@@ -54,6 +54,8 @@ def consume():
         call = execute.pop()
         call()
 
+stack = []
+
 
 def reactive(func, *args, **kw):
     def helper():
@@ -61,9 +63,10 @@ def reactive(func, *args, **kw):
         for c in map_.get(helper, []):
             c.reset(helper)
         remove_helper_from_map(helper)
+        stack.insert(0, current_call)
         current_call = helper
         func(*args, **kw)
-        current_call = None
+        current_call = stack.pop(0) #None
 
     helper()
     return helper

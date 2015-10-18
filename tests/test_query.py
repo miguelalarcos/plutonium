@@ -6,7 +6,7 @@ browser_mock = Mock()
 sys.modules['browser'] = browser_mock
 
 from components.main.reactive import Model, reactive, Reactive
-from components.main.page import Controller
+from components.main.page import Controller, Query
 
 import time
 
@@ -16,7 +16,7 @@ class A(Model):
     objects = {}
 
 
-class Query(Reactive):
+class __Query(Reactive):
     def __init__(self, full_name):
         super().__init__()
         self.full_name = full_name

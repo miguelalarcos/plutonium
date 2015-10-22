@@ -9,7 +9,7 @@ sys.modules['browser'] = browser_mock
 #jq = window.jq
 
 from components.main.reactive import Model, reactive
-from components.main.page import Query, Controller, parse
+from components.main.page import Query, Controller, parse, PageController
 import components.main.page
 from pyquery import PyQuery
 
@@ -47,6 +47,9 @@ class ExtendedPyQuery(PyQuery):
             return True
         return False
 
+    def unbind(self):
+        pass
+
 jq = ExtendedPyQuery
 components.main.page.jq = jq
 #document = None
@@ -74,6 +77,13 @@ class MyController(Controller):
 
 class A(Model):
     objects = {}
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        @reactive
+        def r():
+            self.flag = self.h()
 
     def h(self):
         return self.z != 9
@@ -172,3 +182,28 @@ def test_register():
     c.test(a, {'__position__': 'append', 'x': 1, '__new__': True, '__query__': "('MyQuery', (('__collection__', 'A'), ('__limit__', 1), ('__skip__', 0), ('__sort__', (('x', 1),)), ('a', 1), ('b', 10)))"})
     c.test(a2, {'__position__': 'append', 'x':0, '__new__': True, '__skip__': '111', '__query__': "('MyQuery', (('__collection__', 'A'), ('__limit__', 1), ('__skip__', 0), ('__sort__', (('x', 1),)), ('a', 1), ('b', 10)))"})
     print('->', node)
+
+
+def test_on_click_final():
+    node = jq('<div id="0" query-id="0" class="container"><span id="if1" if="{flag}"><span r id="hoja1" on-click={click}>{y}</span></span></div>')
+    components.main.page.document = node
+    a = A(id=None, y=0, z=19)
+
+    #class MyController(PageController):
+    #    reactives = []
+
+    class MyQuery(Query):
+        reactives = []
+
+    #c = MyController()
+    q = MyQuery('', '', None, 0, 1)
+
+    parse(a, node, q)
+    assert len(node.find('#hoja1')) == 1
+    assert node.find('#hoja1').text() == '0'
+    print('a.z=...1')
+    a.z = 18
+    print('a.z=...2')
+    a.z = 9
+
+    assert len(node.find('#hoja1')) == 0

@@ -14,10 +14,11 @@ def if_function(controller, if_, node, html, query):
     print('if function', if_)
     if is_alive(node):
         val = getattr(controller, if_)
-        if callable(val):
-            val = val()
-        print(val)
+        #if callable(val):
+        #    val = val()
+
         if not val:
+            print('flag', val)
             for ch in node.find('[r]'):
                 ch = jq(ch)
                 if ch.data('helper'):
@@ -25,18 +26,21 @@ def if_function(controller, if_, node, html, query):
                         c.reset(h)
             node.children().remove()
         else:
-            if node.children().length == 0:
+                print('flag', val)
+            #if node.children().length == 0:
                 children = jq(html)
                 node.append(children)
                 for ch in children:
                     parse(controller, jq(ch), query)
-            elif node.children().length == 1:
-                parse(controller, node.children(), query)
+            #elif node.children().length == 1:
+            #    print('llego')
+            #    parse(controller, node.children(), query)
 
 
 def render(model, node, template):
     if template is None:
         return
+    print('render')
     if is_alive(node):
         attrs = re.findall('\{[a-zA-Z_0-9]+\}', template)
         dct = {}
@@ -90,12 +94,16 @@ def set_attributes(controller, node, attrs):
 
 
 def parse(controller, node, query):
+    print('parse')
     if_ = node.attr('if')
     if if_:
         if_ = if_[1:-1]
-        helper = reactive(if_function, controller, if_, node, node.html(), query)
+        html = node.html()
+        node.children().remove()
+        helper = reactive(if_function, controller, if_, node, html, query)
         node.data('helper', [(controller, helper)])
     else:
+        print(node)
         if node.attr('r') == '':
             try:
                 dct = {}

@@ -6,26 +6,27 @@ browser_mock = Mock()
 sys.modules['browser'] = browser_mock
 
 from components.main.reactive import Model, reactive, Reactive
-from components.main.page import Controller, Query
+from components.main.page import Query, PageController
 
 import time
 
+
+def reactive_property(f):
+    return property(f)
 
 
 class A(Model):
     objects = {}
 
 
-class __Query(Reactive):
-    def __init__(self, full_name):
-        super().__init__()
-        self.full_name = full_name
+class BaseQuery(Query):
+    _collection = 'A'
 
-    def dumps(self):
-        return ''
+    def query(self):
+        return {'x': {'$gte': self.a, '$lte': self.b}}
 
 
-class MyQuery(Query):
+class MyQuery(BaseQuery):
     reactives = ['focused', ]
 
     def __init__(self, *args, **kwargs):
@@ -45,7 +46,7 @@ class MyQuery(Query):
                 self.focused.x = qs.selected.x
 
 
-class QuerySearch(Query):
+class QuerySearch(BaseQuery):
     reactives = ['focused', 'selected']
 
     def __init__(self, *args, **kwargs):
@@ -78,7 +79,7 @@ class QuerySearch(Query):
         self.focused = self.models[self.index_focused]
 
 
-class MyController(Controller):
+class MyController(PageController):
     ws = Mock()
 
     def __init__(self, id, **kwargs):
@@ -110,9 +111,19 @@ class MyController(Controller):
             self.queries[id] = q
             return q
 
-#parse(page_controller, jq('.page'))
 
 def test_0():
+    a = A(id=None, z=900)
+
+    @reactive
+    def r():
+        print(a.z)
+
+    a.z = 901
+
+    assert False
+
+def __test_0():
     page_controller = MyController(id='my controller', a=1, b=10)
     page_controller.q.react(page_controller)
     page_controller.qs.react(page_controller)

@@ -14,9 +14,6 @@ def if_function(controller, if_, node, html, query):
     print('if function', if_)
     if is_alive(node):
         val = getattr(controller, if_)
-        #if callable(val):
-        #    val = val()
-
         if not val:
             print('flag', val)
             for ch in node.find('[r]'):
@@ -27,14 +24,10 @@ def if_function(controller, if_, node, html, query):
             node.children().remove()
         else:
                 print('flag', val)
-            #if node.children().length == 0:
                 children = jq(html)
                 node.append(children)
                 for ch in children:
                     parse(controller, jq(ch), query)
-            #elif node.children().length == 1:
-            #    print('llego')
-            #    parse(controller, node.children(), query)
 
 
 def render(model, node, template):
@@ -54,24 +47,38 @@ def render(model, node, template):
 
 def set_events(controller, node, attrs, query):
     print('set events', attrs)
-    node.unbind() # debo intentar llamar a set_events sin necesidad de hacer unbind
+    #node.unbind()
     on_click = attrs.get('on-click')
     if on_click:
         on_click = on_click[1:-1]
         method = getattr(controller, on_click)
         node.click(lambda: method(query))
 
-    integer_value = attrs.get('integer-value')
-    if integer_value:
-        integer_value = integer_value[1:-1]
+    if attrs.get('attr'):
+        attr, getter, setter = attrs.get('attr').split()
 
-        def set_integer_value(event=None):
-            try:
-                val = int(node.val())
-            except ValueError:
-                val = node.val()
-            setattr(controller, integer_value, val)
-        node.keyup(set_integer_value)
+        def helper(event):
+            if event.which in (37, 39):
+                return
+            controller.caret = (node[0].selectionStart, len(node[0].value))
+            val = node.val()
+            s = getattr(controller, setter)
+            val = s(val)
+            print('setattr', controller, attr, val)
+            setattr(controller, attr, val)
+        node.keyup(helper)
+
+    # integer_value = attrs.get('integer-value')
+    # if integer_value:
+    #     integer_value = integer_value[1:-1]
+    #
+    #     def set_integer_value(event=None):
+    #         try:
+    #             val = int(node.val())
+    #         except ValueError:
+    #             val = node.val()
+    #         setattr(controller, integer_value, val)
+    #     node.keyup(set_integer_value)
 
 
 def set_attributes(controller, node, attrs):
@@ -79,18 +86,28 @@ def set_attributes(controller, node, attrs):
     for key, value in attrs.items():
         if key == 'r':
             continue
-        attrs = re.findall('\{[a-zA-Z_0-9]+\}', value)
-        for attr in attrs:
-            attr = attr[1:-1]
+        if key == 'attr':
+            attr, getter, setter = value.split()
+            g = getattr(controller, getter)
             v = getattr(controller, attr)
-            if callable(v) and key != 'on-click':
-                v = v()
-            if key == 'integer-value':
-                node.val(str(v))
+            v = g(v)
+            base = len(v) - controller.caret[1]
+            node.val(v)
+            print(node[0], node)
+            node[0].setSelectionRange(controller.caret[0]+base, controller.caret[0]+base)
+        else:
+            attrs = re.findall('\{[a-zA-Z_0-9]+\}', value)
+            for attr in attrs:
+                attr = attr[1:-1]
+                v = getattr(controller, attr)
+                if callable(v) and key != 'on-click':
+                    v = v()
+                #if key == 'integer-value':
+                #    node.val(str(v))
 
-            mapping[attr] = v
-        if key not in ('on-click', 'integer-value'):
-            node.attr(key, value.format(**mapping))
+                mapping[attr] = v
+            if key not in ('on-click', 'integer-value'):
+                node.attr(key, value.format(**mapping))
 
 
 def parse(controller, node, query):
@@ -138,7 +155,7 @@ def parse(controller, node, query):
                     parse(controller, ch, query)
 
 
-class Controller(Model):
+class _Controller(Model):
     objects = {}
     queries = {}
 
@@ -251,7 +268,7 @@ class Controller(Model):
 
 class Query(Reactive):
     def __init__(self, full_name, name, sort, skip, limit, **kwargs):
-        super().__init__()
+        super().__init__(**kwargs)
         self.full_name = full_name
         self.name = name
         self.sort = sort
@@ -303,11 +320,12 @@ class PageController(Reactive):
             q = klass(full_name, name, sort, skip, limit, **kwargs)
             self.queries[id] = q
 
-        node, _ = q.node
-        if node.data('helper'):
-            for c, h in node.data('helper'):
-                c.reset(h)
-        node.children().remove()
+        if q.node:
+            node, _ = q.node
+            if node.data('helper'):
+                for c, h in node.data('helper'):
+                    c.reset(h)
+            node.children().remove()
         self.ws.send(q.dumps())
         return q
 

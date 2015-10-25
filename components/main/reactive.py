@@ -1,5 +1,6 @@
 import random
 import json
+import re
 from components.lib.epochdate import datetimeargs2epoch
 from contextlib import contextmanager
 
@@ -86,6 +87,7 @@ class Model(object):
         self.__dict__['_dirty'] = set()
         self.__dict__['id'] = id   ################
         self.__dict__['__collection__'] = self.__class__.__name__
+        self.__dict__['caret'] = (0, 0)
 
         def set_values():
             #setattr(self, 'id', id) ###########
@@ -122,6 +124,16 @@ class Model(object):
     def __call__(self, *args, **kwargs):
         return self
 
+    @staticmethod
+    def integer_in(value):
+        print('>>', type(value))
+        val = re.sub(r'[^0-9]', '', value)
+        return int(val)
+
+    @staticmethod
+    def integer_out(value):
+        return format(value, ',d')
+
     def reset(self, func):
         ret = []
         for item in self._dep:
@@ -130,7 +142,7 @@ class Model(object):
         self._dep = ret
 
     def __getattr__(self, name):
-        if name in ('__set__', '__bool__', '__len__'):
+        if name in ('__set__', '__bool__', '__len__'): # investigar esto
             return
 
         if current_call is not None:
@@ -168,6 +180,8 @@ class Model(object):
 
 # ##########
 class Reactive(object):
+    reactives = []
+
     def __init__(self, **kw):
         self._dep = []
         def set_values():

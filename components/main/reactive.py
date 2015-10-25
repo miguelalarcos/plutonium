@@ -153,6 +153,10 @@ class Model(object):
         return self.__dict__['_'+name]
 
     def __setattr__(self, key, value):
+        if key not in self.reactives:
+            self.__dict__[key] = value
+            return
+
         if key.startswith('_'):
             dirty = False
             key = key[1:]
@@ -161,13 +165,13 @@ class Model(object):
 
         if '_'+key not in self.__dict__.keys():
             self.__dict__['_'+key] = value
-            if dirty and key != 'selected':
+            if dirty: # and key != 'selected':
                 self._dirty.add(key)
             return
 
         if value != self.__dict__['_'+key]:
             self.__dict__['_'+key] = value
-            if dirty and key != 'selected':
+            if dirty: # and key != 'selected':
                 self._dirty.add(key)
 
             for item in self._dep:

@@ -64,21 +64,8 @@ def set_events(controller, node, attrs, query):
             val = node.val()
             s = getattr(controller, setter)
             val = s(val)
-            print('setattr', controller, attr, val)
             setattr(controller, attr, val)
         node.keyup(helper)
-
-    # integer_value = attrs.get('integer-value')
-    # if integer_value:
-    #     integer_value = integer_value[1:-1]
-    #
-    #     def set_integer_value(event=None):
-    #         try:
-    #             val = int(node.val())
-    #         except ValueError:
-    #             val = node.val()
-    #         setattr(controller, integer_value, val)
-    #     node.keyup(set_integer_value)
 
 
 def set_attributes(controller, node, attrs):
@@ -93,7 +80,6 @@ def set_attributes(controller, node, attrs):
             v = g(v)
             base = len(v) - controller.caret[1]
             node.val(v)
-            print(node[0], node)
             node[0].setSelectionRange(controller.caret[0]+base, controller.caret[0]+base)
         else:
             attrs = re.findall('\{[a-zA-Z_0-9]+\}', value)

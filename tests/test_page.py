@@ -5,8 +5,7 @@ browser_mock = Mock()
 sys.modules['browser'] = browser_mock
 
 from lxml.html import InputElement
-InputElement.setSelectionRange = Mock
-InputElement.selectionStart = Mock
+
 
 from components.main.reactive import Model, reactive
 from components.main.page import Query, parse, PageController
@@ -79,6 +78,7 @@ class MyController(PageController):
 
 class A(Model):
     objects = {}
+    reactives = ['y', 'z', 'flag']
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -101,7 +101,10 @@ class EventKeyUp:
         self.which = which
 
 def test_attr():
-    a = A(id=None, y=8, z=9)
+    InputElement.setSelectionRange = Mock()
+    InputElement.selectionStart = 0
+
+    a = A(id=None, y=0, z=9)
     node = jq("<div id='a' class='container'><input r id='0' attr='y integer_out integer_in'></div>")
     components.main.page.document = node
     class MyQuery(Query):
@@ -111,10 +114,15 @@ def test_attr():
     parse(a, node, q)
 
     n = node.find('#0')
-    assert n.val() == '8'
+    n.keyup(event=EventKeyUp(44))
+    assert n.val() == '0'
     n.val('10')
     n.keyup(event=EventKeyUp(44))
-    assert a.y == 10
+    assert call(1, 1) in InputElement.setSelectionRange.mock_calls
+    n.val('1000')
+    n.keyup(event=EventKeyUp(44))
+    assert n.val() == '1,000'
+    assert a.y == 1000
 
 def test_if_if():
     node = jq('<div class="page"><div id="a" if="{a}"><div id="b" if="{b}"><div id="0" class="template">hola{hhh}</div></div></div></div>')

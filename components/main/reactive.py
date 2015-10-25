@@ -3,6 +3,7 @@ import json
 import re
 from components.lib.epochdate import datetimeargs2epoch
 from contextlib import contextmanager
+from datetime import datetime
 
 do_consume = True
 
@@ -126,13 +127,46 @@ class Model(object):
 
     @staticmethod
     def integer_in(value):
-        print('>>', type(value))
         val = re.sub(r'[^0-9]', '', value)
         return int(val)
 
     @staticmethod
     def integer_out(value):
         return format(value, ',d')
+
+    @staticmethod
+    def phone_setter(value):
+        return re.sub(r'[\(\)\- ]', '', value)
+
+    @staticmethod
+    def phone_getter(value):
+        if len(value) < 3:
+            return value
+        else:
+            tail = ''
+            for i in range(3, len(value), 2):
+                t1 = value[i]
+                try:
+                    t2 = value[i+1]
+                except IndexError:
+                    t2 = ''
+                tail += t1 + t2 + ' '
+            return ('('+value[0:3]+')-' + tail).rstrip()
+
+
+    @staticmethod
+    def datetime_setter(value):
+        value_ = re.sub(r'-', '', value)
+        try:
+            return datetime.strptime(value_, '%d%m%Y')
+        except ValueError:
+            return value
+
+    @staticmethod
+    def datetime_getter(value):
+        if type(value) is str:
+            return value
+        return value.strftime('%d-%m-%Y')
 
     def reset(self, func):
         ret = []

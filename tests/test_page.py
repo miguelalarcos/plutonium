@@ -1,4 +1,6 @@
 import sys
+import datetime
+
 sys.path.insert(0, '.')
 from mock import Mock, MagicMock, call
 browser_mock = Mock()
@@ -123,6 +125,86 @@ def test_attr():
     n.keyup(event=EventKeyUp(44))
     assert n.val() == '1,000'
     assert a.y == 1000
+
+def test_attr_phone():
+    InputElement.setSelectionRange = Mock()
+    InputElement.selectionStart = 0
+
+    a = A(id=None, y='659688973', z=9)
+    node = jq("<div id='a' class='container'><input r id='0' attr='y phone_getter phone_setter'></div>")
+    components.main.page.document = node
+    class MyQuery(Query):
+        reactives = []
+    q = MyQuery('', '', None, 0, 1)
+
+    parse(a, node, q)
+
+    n = node.find('#0')
+    n.keyup(event=EventKeyUp(44))
+    assert n.val() == '(659)-68 89 73'
+
+    n.val('12')
+    n.keyup(event=EventKeyUp(44))
+    assert n.val() == '12'
+
+    n.val('123')
+    n.keyup(event=EventKeyUp(44))
+    assert n.val() == '(123)-'
+
+    n.val('(123)-')
+    n.keyup(event=EventKeyUp(44))
+    assert n.val() == '(123)-'
+
+    n.val('(123)-4')
+    n.keyup(event=EventKeyUp(44))
+    assert n.val() == '(123)-4'
+
+    n.val('12345')
+    n.keyup(event=EventKeyUp(44))
+    assert n.val() == '(123)-45'
+
+    n.val('(123)-45')
+    n.keyup(event=EventKeyUp(44))
+    assert n.val() == '(123)-45'
+
+    n.val('123456')
+    n.keyup(event=EventKeyUp(44))
+    assert n.val() == '(123)-45 6'
+
+def test_attr_datetime():
+    InputElement.setSelectionRange = Mock()
+    InputElement.selectionStart = 0
+
+    a = A(id=None, y=datetime.datetime(2015,12,31), z=9)
+    node = jq("<div id='a' class='container'><input r id='0' attr='y datetime_getter datetime_setter'></div>")
+    components.main.page.document = node
+    class MyQuery(Query):
+        reactives = []
+    q = MyQuery('', '', None, 0, 1)
+
+    parse(a, node, q)
+
+    n = node.find('#0')
+    n.keyup(event=EventKeyUp(44))
+    assert n.val() == '31-12-2015'
+    n.val('31')
+    n.keyup(event=EventKeyUp(44))
+    assert n.val() == '31'
+    n.val('31-12')
+    n.keyup(event=EventKeyUp(44))
+    assert n.val() == '31-12'
+    assert a.y == '31-12'
+
+    n.val('3112')
+    n.keyup(event=EventKeyUp(44))
+    assert n.val() == '3112'
+    assert a.y == '3112'
+
+    n.val('31122015')
+    n.keyup(event=EventKeyUp(44))
+    assert n.val() == '31-12-2015'
+
+    assert a.y == datetime.datetime(2015, 12, 31)
 
 def test_if_if():
     node = jq('<div class="page"><div id="a" if="{a}"><div id="b" if="{b}"><div id="0" class="template">hola{hhh}</div></div></div></div>')

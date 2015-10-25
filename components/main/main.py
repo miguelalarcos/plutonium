@@ -13,19 +13,18 @@ from components.main.models.A import A
 from components.main.init import init, set_page_controller
 
 from components.main.reactive import reactive
-from components.main.page import Controller, parse
+from components.main.page import PageController, parse
 from components.main.queries.my_query import MyQuery
 
 
-
-class MyController(Controller):
-    def __init__(self, id, *args, **kwargs):
-        super().__init__(id, *args, **kwargs)
+class MyController(PageController):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         set_page_controller(self)
         @reactive
         def f():
-            q = MyQuery(id='my_query', sort=(('x', 1),), skip=0, limit=1, a=self.a, b=self.b)
-            self.subscribe(q)
+            self.q = self.subscribe(id='my_query', klass=MyQuery, name='MyQuery',
+                                    sort=(('x', 1),), skip=0, limit=1, a=self.a, b=self.b)
 
     def x(self):
         return False

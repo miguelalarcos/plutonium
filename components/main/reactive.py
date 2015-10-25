@@ -56,8 +56,6 @@ def consume():
         call = execute.pop()
         call()
 
-#stack = []
-
 
 def reactive(func, *args, **kw):
     def helper():
@@ -65,10 +63,9 @@ def reactive(func, *args, **kw):
         for c in map_.get(helper, []):
             c.reset(helper)
         remove_helper_from_map(helper)
-        #stack.insert(0, current_call)
         current_call = helper
         func(*args, **kw)
-        current_call = None  # stack.pop(0)
+        current_call = None
 
     helper()
     return helper
@@ -81,17 +78,18 @@ def register(klass):
 
 
 class Model(object):
-    def __init__(self, id, **kw):
-        if id is None:
+    def __init__(self, **kw):
+        if 'id' not in kw.keys() or kw['id'] is None:
             id = str(random.random())
+        else:
+            id = kw['id']
         self.__dict__['_dep'] = []
         self.__dict__['_dirty'] = set()
-        self.__dict__['id'] = id   ################
+        self.__dict__['id'] = id
         self.__dict__['__collection__'] = self.__class__.__name__
         self.__dict__['caret'] = (0, 0)
 
         def set_values():
-            #setattr(self, 'id', id) ###########
             for k, v in kw.items():
                 if k in ('__deleted__', '__collection__'):
                     continue
@@ -126,12 +124,12 @@ class Model(object):
         return self
 
     @staticmethod
-    def integer_in(value):
+    def integer_setter(value):
         val = re.sub(r'[^0-9]', '', value)
         return int(val)
 
     @staticmethod
-    def integer_out(value):
+    def integer_getter(value):
         return format(value, ',d')
 
     @staticmethod
@@ -199,13 +197,13 @@ class Model(object):
 
         if '_'+key not in self.__dict__.keys():
             self.__dict__['_'+key] = value
-            if dirty: # and key != 'selected':
+            if dirty:
                 self._dirty.add(key)
             return
 
         if value != self.__dict__['_'+key]:
             self.__dict__['_'+key] = value
-            if dirty: # and key != 'selected':
+            if dirty:
                 self._dirty.add(key)
 
             for item in self._dep:
@@ -222,6 +220,7 @@ class Reactive(object):
 
     def __init__(self, **kw):
         self._dep = []
+
         def set_values():
             for k, v in kw.items():
                 setattr(self, k, v)

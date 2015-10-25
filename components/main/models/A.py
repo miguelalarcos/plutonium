@@ -1,19 +1,29 @@
-from components.main.reactive import Model
-from components.register_model import register
+from components.main.reactive import Model, register, reactive
 
 
 @register
 class A(Model):
-    def flag(self):
-        return self.x == 9
+    reactives = ['x', 'bflag', 'bminus']
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        @reactive
+        def r():
+            self.bflag = self.x == 9
+
+        @reactive
+        def r():
+            self.bminus = self.x != -1
+
+    #def flag(self):
+    #    return self.x == 9
 
     def minus(self):
-        print('llego a minus', self.id)
         self.x -= 1
         self.save()
 
     def plus(self):
-        print('llego a plus', self.id)
         self.x += 1
         self.save()
 
@@ -25,8 +35,8 @@ class A(Model):
             return 'red'
         return ''
 
-    def show_minus(self):
-        return self.x != -1
+    #def show_minus(self):
+    #    return self.x != -1
 
 
 

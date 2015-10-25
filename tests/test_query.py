@@ -19,6 +19,12 @@ class A(Model):
     objects = {}
 
 
+class BaseQueryPattern(Query):
+    _collection = 'B'
+
+    def query(self):
+        return {'surname': {'regex': self.pattern}}
+
 class BaseQuery(Query):
     _collection = 'A'
 
@@ -46,7 +52,7 @@ class MyQuery(BaseQuery):
                 self.focused.x = qs.selected.x
 
 
-class QuerySearch(BaseQuery):
+class QuerySearch(BaseQueryPattern):
     reactives = ['focused', 'selected']
 
     def __init__(self, *args, **kwargs):
@@ -84,7 +90,7 @@ class MyController(PageController):
 
     def __init__(self, id, **kwargs):
         super().__init__(id, **kwargs)
-        self.queries = {}
+        #self.queries = {}
 
         @reactive
         def r():
@@ -95,21 +101,21 @@ class MyController(PageController):
         def r():
             self.qs = self.subscribe(id='my_query_search', klass=QuerySearch, name='search', sort=(('name', 1),), skip=0, limit=10, pattern=self.q.focused.x)
 
-    def subscribe(self, id, klass, name, sort, skip, limit, **kwargs):
-        if id in self.queries.keys():
-            print('stop', self.queries[id].full_name)
-        print('subscribe', kwargs)
-        full_name = str((name, tuple(sorted([('__collection__', 'collection'),
-                                                ('__sort__', sort), ('__skip__', skip)] +
-                                                 list(kwargs.items()) + [('__limit__', limit)]))))
-        try:
-            q = self.queries[id]
-            q.full_name = full_name
-            return q
-        except KeyError:
-            q = klass(full_name)
-            self.queries[id] = q
-            return q
+    # def subscribe(self, id, klass, name, sort, skip, limit, **kwargs):
+    #     if id in self.queries.keys():
+    #         print('stop', self.queries[id].full_name)
+    #     print('subscribe', kwargs)
+    #     full_name = str((name, tuple(sorted([('__collection__', 'collection'),
+    #                                             ('__sort__', sort), ('__skip__', skip)] +
+    #                                              list(kwargs.items()) + [('__limit__', limit)]))))
+    #     try:
+    #         q = self.queries[id]
+    #         q.full_name = full_name
+    #         return q
+    #     except KeyError:
+    #         q = klass(full_name)
+    #         self.queries[id] = q
+    #         return q
 
 
 def test_0():

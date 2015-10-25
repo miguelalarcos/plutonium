@@ -7,10 +7,8 @@ from server.main.client import Client
 from server.main.DB import DB
 from server.main.validation import validate
 from server.main.task import registered_tasks
-#from components.main.page import Query
-#from components.lib.utils import index_by_id
 import components.load_queries
-from components.register_query import registered_queries
+from components.main.page import registered_queries
 
 db = motor.MotorClient().test_database
 

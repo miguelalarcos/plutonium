@@ -107,7 +107,7 @@ def test_attr():
     InputElement.selectionStart = 0
 
     a = A(id=None, y=0, z=9)
-    node = jq("<div id='a' class='container'><input r id='0' attr='y integer_out integer_in'></div>")
+    node = jq("<div id='a' class='container'><input r id='0' attr='y integer_getter integer_setter'></div>")
     components.main.page.document = node
     class MyQuery(Query):
         reactives = []

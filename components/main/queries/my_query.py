@@ -1,5 +1,4 @@
-from components.main.query import Query
-from components.register_query import register
+from components.main.page import Query, register
 
 @register
 class MyQuery(Query):

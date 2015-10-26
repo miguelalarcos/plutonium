@@ -39,7 +39,15 @@ def render(model, node, template):
         dct = {}
         for attr in attrs:
             attr = attr[1:-1]
-            dct[attr] = getattr(model, attr)
+            getter = None
+            if ' ' in attr:
+                attr, getter = attr.split()
+            v = getattr(model, attr)
+            if callable(v):
+                v = v()
+            if getter:
+                v = getter(v)
+            dct[attr] = v  # getattr(model, attr)
 
         node.html(template.format(**dct))
         print('>', node.html())
@@ -47,12 +55,22 @@ def render(model, node, template):
 
 def set_events(controller, node, attrs, query):
     print('set events', attrs)
-    #node.unbind()
-    on_click = attrs.get('on-click')
-    if on_click:
-        on_click = on_click[1:-1]
-        method = getattr(controller, on_click)
-        node.click(lambda: method(query))
+
+    # on_click = attrs.get('on-click')
+    # if on_click:
+    #     method = getattr(controller, on_click)
+    #     node.click(lambda: method(query))
+    #
+    # on_keyup = attrs.get('on-keyup')
+    # if on_keyup:
+    #     method = getattr(controller, on_keyup)
+    #     node.keyup(lambda: method(query))
+
+    for action_str in ('on-click', 'on-keyup'):
+        action = attrs.get(action_str)
+        if action:
+            method = getattr(controller, action)
+            getattr(node, action_str[3:])(lambda: method(query))
 
     if attrs.get('attr'):
         attr, getter, setter = attrs.get('attr').split()
@@ -71,7 +89,7 @@ def set_events(controller, node, attrs, query):
 def set_attributes(controller, node, attrs):
     mapping = {}
     for key, value in attrs.items():
-        if key == 'r':
+        if key in ('r', 'on-click', 'on-keyup'):
             continue
         if key == 'attr':
             attr, getter, setter = value.split()
@@ -86,12 +104,11 @@ def set_attributes(controller, node, attrs):
             for attr in attrs:
                 attr = attr[1:-1]
                 v = getattr(controller, attr)
-                if callable(v) and key != 'on-click':
+                if callable(v):
                     v = v()
-
                 mapping[attr] = v
-            if key != 'on-click':
-                node.attr(key, value.format(**mapping))
+
+            node.attr(key, value.format(**mapping))
 
 
 def parse(controller, node, query):
@@ -137,40 +154,6 @@ def parse(controller, node, query):
                 for ch in node.children():
                     ch = jq(ch)
                     parse(controller, ch, query)
-
-
-registered_queries = {}
-
-
-def register(Q):
-    registered_queries[Q.__name__] = Q
-    return Q
-
-
-class Query(Reactive):
-    def __init__(self, full_name, name, sort, skip, limit, **kwargs):
-        super().__init__(**kwargs)
-        self.full_name = full_name
-        self.name = name
-        self.sort = sort
-        self.skip = skip
-        self.limit = limit
-        self.kw = kwargs
-        self.stop = None
-        self.models = []
-        self.node = None
-
-    def dumps(self):
-        arg = {}
-        arg['__query__'] = self.name
-        arg['__sort__'] = self.sort
-        arg['__skip__'] = self.skip
-        arg['__limit__'] = self.limit
-        if self.stop:
-            arg['__stop__'] = self.stop
-        for k, v in self.kw.items():
-            arg[k] = v
-        return json.dumps(arg)
 
 
 class PageController(Reactive):

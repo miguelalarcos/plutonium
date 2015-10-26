@@ -1,22 +1,25 @@
 import json
 
+registered_queries = {}
 
-class Query(object):
-    def __init__(self, id, sort, skip, limit, stop=None, **kw):
-        self.id = id
-        self.name = self.__class__.__name__
-        self.full_name = str((self.__class__.__name__, tuple(sorted([('__collection__', self.collection),
-                                                                     ('__sort__', sort), ('__skip__', skip)] +
-                                                                    list(kw.items()) + [('__limit__', limit)]))))
+
+def register(Q):
+    registered_queries[Q.__name__] = Q
+    return Q
+
+
+class Query(Reactive):
+    def __init__(self, full_name, name, sort, skip, limit, **kwargs):
+        super().__init__(**kwargs)
+        self.full_name = full_name
+        self.name = name
         self.sort = sort
         self.skip = skip
         self.limit = limit
-        for k,v in kw.items():
-            setattr(self, k, v)
+        self.kw = kwargs
+        self.stop = None
         self.models = []
-        self.nodes = []
-        self.stop = stop
-        self.kw = kw
+        self.node = None
 
     def dumps(self):
         arg = {}

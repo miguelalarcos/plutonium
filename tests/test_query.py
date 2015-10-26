@@ -1,18 +1,12 @@
 import sys
 sys.path.insert(0, '.')
-
 from mock import Mock
 browser_mock = Mock()
 sys.modules['browser'] = browser_mock
-
 from components.main.reactive import Model, reactive, Reactive
-from components.main.page import Query, PageController
-
-import time
-
-
-def reactive_property(f):
-    return property(f)
+from components.main.page import PageController
+from components.main.query import Query
+from time import time
 
 
 class A(Model):
@@ -24,6 +18,7 @@ class BaseQueryPattern(Query):
 
     def query(self):
         return {'surname': {'regex': self.pattern}}
+
 
 class BaseQuery(Query):
     _collection = 'A'
@@ -37,11 +32,12 @@ class MyQuery(BaseQuery):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.models = [A(id=None, x=-1), A(id=None, x=-2), A(id=None, x=-3)]
+        self.models = [A(x=-1), A(x=-2), A(x=-3)]
         self.focused = self.models[0]
 
         class Helper(Reactive):
             reactives = ['x']
+
         self.keyup = Helper(x=None)
 
     def react(self, controller):
@@ -57,7 +53,7 @@ class QuerySearch(BaseQueryPattern):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.models = [A(id=None, x=0), A(id=None, x=1), A(id=None, x=2)]
+        self.models = [A(x=0), A(x=1), A(x=2)]
         self.focused = self.models[0]
         self.selected = None
         self.index_focused = 0
@@ -88,56 +84,28 @@ class QuerySearch(BaseQueryPattern):
 class MyController(PageController):
     ws = Mock()
 
-    def __init__(self, id, **kwargs):
-        super().__init__(id, **kwargs)
-        #self.queries = {}
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
         @reactive
         def r():
-            self.q = self.subscribe(id='my_query', klass=MyQuery, name='between', sort=(('x', 1),), skip=0, limit=1, a=self.a, b=self.b)
+            self.q = self.subscribe(id='my_query', klass=MyQuery, name='BaseQuery', sort=(('x', 1),), skip=0, limit=1, a=self.a, b=self.b)
 
 
         @reactive
         def r():
-            self.qs = self.subscribe(id='my_query_search', klass=QuerySearch, name='search', sort=(('name', 1),), skip=0, limit=10, pattern=self.q.focused.x)
-
-    # def subscribe(self, id, klass, name, sort, skip, limit, **kwargs):
-    #     if id in self.queries.keys():
-    #         print('stop', self.queries[id].full_name)
-    #     print('subscribe', kwargs)
-    #     full_name = str((name, tuple(sorted([('__collection__', 'collection'),
-    #                                             ('__sort__', sort), ('__skip__', skip)] +
-    #                                              list(kwargs.items()) + [('__limit__', limit)]))))
-    #     try:
-    #         q = self.queries[id]
-    #         q.full_name = full_name
-    #         return q
-    #     except KeyError:
-    #         q = klass(full_name)
-    #         self.queries[id] = q
-    #         return q
+            self.qs = self.subscribe(id='my_query_search', klass=QuerySearch, name='BaseQueryPattern', sort=(('name', 1),), skip=0, limit=10, pattern=self.q.focused.x)
 
 
 def test_0():
-    a = A(id=None, z=900)
-
-    @reactive
-    def r():
-        print(a.z)
-
-    a.z = 901
-
-    assert False
-
-def __test_0():
-    page_controller = MyController(id='my controller', a=1, b=10)
+    page_controller = MyController(a=1, b=10)
     page_controller.q.react(page_controller)
     page_controller.qs.react(page_controller)
 
     page_controller.a = 5
     page_controller.q.focused.x = 'hola'
-    page_controller.q.keyup.x = ('up', time.time())
-    page_controller.q.keyup.x = ('up', time.time())
-    page_controller.q.keyup.x = ('enter', time.time())
+    page_controller.q.keyup.x = ('up', time())
+    page_controller.q.keyup.x = ('up', time())
+    page_controller.q.keyup.x = ('enter', time())
     assert page_controller.q.focused.x == 2
     assert False

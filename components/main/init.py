@@ -53,7 +53,7 @@ def on_message(evt):
             model = klass(**data_)
 
         print('test all controllers')
-        page_controller.test(model, raw)
+        PageController.test(model, raw)
         #if all(r):
         #    del klass.objects[model.id]
     except Exception as e:

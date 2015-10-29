@@ -10,10 +10,10 @@ def is_alive(node):
     return jq.contains(document, node[0])
 
 
-def if_function(controller, if_, node, html, query):
+def if_function(if_, node, html, *args):
     print('if function', if_)
     if is_alive(node):
-        val = getattr(controller, if_)
+        val = getattr(args[0], if_)
         if not val:
             print('flag', val)
             for ch in node.find('[r]'):
@@ -27,10 +27,11 @@ def if_function(controller, if_, node, html, query):
                 children = jq(html)
                 node.append(children)
                 for ch in children:
-                    parse(controller, jq(ch), query)
+                    parse(jq(ch), *args)
 
 
-def render(model, node, template):
+def render(node, template, *args):
+    model = args[0]
     if template is None:
         return
     print('render')
@@ -44,7 +45,7 @@ def render(model, node, template):
                 attr, getter = attr.split()
             v = getattr(model, attr)
             if callable(v):
-                v = v()
+                v = v(*args[1:])
             if getter:
                 v = getter(v)
             dct[attr] = v  # getattr(model, attr)
@@ -53,24 +54,15 @@ def render(model, node, template):
         print('>', node.html())
 
 
-def set_events(controller, node, attrs, query):
+def set_events(node, attrs, *args):
     print('set events', attrs)
 
-    # on_click = attrs.get('on-click')
-    # if on_click:
-    #     method = getattr(controller, on_click)
-    #     node.click(lambda: method(query))
-    #
-    # on_keyup = attrs.get('on-keyup')
-    # if on_keyup:
-    #     method = getattr(controller, on_keyup)
-    #     node.keyup(lambda: method(query))
-
+    controller = args[0]
     for action_str in ('on-click', 'on-keyup'):
         action = attrs.get(action_str)
         if action:
             method = getattr(controller, action)
-            getattr(node, action_str[3:])(lambda: method(query))
+            getattr(node, action_str[3:])(lambda: method(*args))
 
     if attrs.get('attr'):
         attr, getter, setter = attrs.get('attr').split()
@@ -86,7 +78,8 @@ def set_events(controller, node, attrs, query):
         node.keyup(helper)
 
 
-def set_attributes(controller, node, attrs):
+def set_attributes(node, attrs, *args):
+    controller = args[0]
     mapping = {}
     for key, value in attrs.items():
         if key in ('r', 'on-click', 'on-keyup'):
@@ -105,23 +98,23 @@ def set_attributes(controller, node, attrs):
                 attr = attr[1:-1]
                 v = getattr(controller, attr)
                 if callable(v):
-                    v = v()
+                    v = v(*args[1:])
                 mapping[attr] = v
 
             node.attr(key, value.format(**mapping))
 
 
-def parse(controller, node, query):
+#def parse(controller, node, query):
+def parse(node, *args):
+    controller = args[0]
     print('parse')
     if_ = node.attr('if')
     if if_:
-        if_ = if_[1:-1]
         html = node.html()
         node.children().remove()
-        helper = reactive(if_function, controller, if_, node, html, query)
+        helper = reactive(if_function, if_, node, html, *args)
         node.data('helper', [(controller, helper)])
     else:
-        print(node)
         if node.attr('r') == '':
             try:
                 dct = {}
@@ -132,12 +125,12 @@ def parse(controller, node, query):
                 for k, v in node[0].attrib.items():
                     dct[k] = v
 
-            helper = reactive(set_attributes, controller, node, dct)
+            helper = reactive(set_attributes, node, dct, controller)
             node.data('helper', [(controller, helper)])
-            set_events(controller, node, dct, query)
+            set_events(node, dct, *args)
         if node.children().length == 0:
             if node.attr('r') == '':
-                helper = reactive(render, controller, node, node.html())
+                helper = reactive(render, node, node.html(), *args)
                 lista = node.data('helper')
                 if lista:
                     lista_ = []
@@ -148,41 +141,43 @@ def parse(controller, node, query):
                 else:
                     node.data('helper', [(controller, helper)])
         else:
-            if node.hasClass('template'):
-                controller.register(node)
+            if node.attr('each'):
+                PageController.register(node, *args)
             else:
                 for ch in node.children():
                     ch = jq(ch)
-                    parse(controller, ch, query)
+                    parse(ch, *args)
 
 
 class PageController(Reactive):
     queries = {}
 
-    def register(self, node):
-        name = node.attr('query-id')
+    @classmethod
+    def register(cls, node, *args):
+        name = node.attr('each')
         html = node.html()
         node.children().remove()
 
-        q = self.queries[name]
+        q = cls.queries[name]
         q.node = (node, html)
         for a in q.models:
             n_ = jq(html)
-            n_.attr('reactive_id', a.id)
+            n_.attr('reactive-id', a.id)
             node.append(n_)
-            parse(a, n_, q)
+            parse(n_, a, q, *args)
 
-    def subscribe(self, id, klass, name, sort, skip, limit, **kwargs):
+    @classmethod
+    def subscribe(cls, id, klass, name, sort, skip, limit, **kwargs):
         full_name = str((name, tuple(sorted([('__collection__', 'collection'),
                                             ('__sort__', sort), ('__skip__', skip)] +
                                             list(kwargs.items()) + [('__limit__', limit)]))))
         try:
-            q = self.queries[id]
+            q = cls.queries[id]
             q.stop = q.full_name
             q.full_name = full_name
         except KeyError:
             q = klass(full_name, name, sort, skip, limit, **kwargs)
-            self.queries[id] = q
+            cls.queries[id] = q
 
         if q.node:
             node, _ = q.node
@@ -190,23 +185,25 @@ class PageController(Reactive):
                 for c, h in node.data('helper'):
                     c.reset(h)
             node.children().remove()
-        self.ws.send(q.dumps())
+        cls.ws.send(q.dumps())
         return q
 
-    def test(self, model, raw):
+    @classmethod
+    def test(cls, model, raw):
         query_full_name = raw['__query__']
-        for query in self.queries.values():
+        for query in cls.queries.values():
             if query.full_name == query_full_name:
                 print(raw)
                 if '__out__' in raw.keys():
-                    self.out(raw['__out__'], query)
+                    cls.out(raw['__out__'], query)
                 if '__new__' in raw.keys():
-                    self.new(model, raw, query)
+                    cls.new(model, raw, query)
                 if '__new__' not in raw.keys() and '__out__' not in raw.keys():
-                    self.modify(model, raw, query)
+                    cls.modify(model, raw, query)
 
-    def modify(self, model, raw, query):
-        index = self.index_by_id(model.id, query.models)
+    @classmethod
+    def modify(cls, model, raw, query):
+        index = cls.index_by_id(model.id, query.models)
         del query.models[index]
 
         position = raw['__position__']
@@ -215,29 +212,32 @@ class PageController(Reactive):
         else:
             ref, index = position
         for node, html in query.nodes:
-            n_ = node.children("[reactive_id='"+str(model.id)+"']")
+            n_ = node.children("[reactive-id='"+str(model.id)+"']")
             if position == 'before':
                 node.prepend(n_)
             else:
-                ref = node.children("[reactive_id='"+ref+"']")
+                ref = node.children("[reactive-id='"+ref+"']")
                 ref.after(n_)
-            parse(model, n_, query)
+            parse(n_, model, query)
 
         query.models.insert(index, model)
 
-    def index_by_id(self, id, models):
+    @staticmethod
+    def index_by_id(id, models):
         lista = []
         for item in models:
             lista.append(item.id)
         return lista.index(id)
 
-    def out(self, _id, query):
-        index = self.index_by_id(_id, query.models)
+    @classmethod
+    def out(cls, _id, query):
+        index = cls.index_by_id(_id, query.models)
         del query.models[index]
         for node, html in query.nodes:
-            node.children("[reactive_id='"+str(_id)+"']").remove()
+            node.children("[reactive-id='"+str(_id)+"']").remove()
 
-    def new(self, model, raw, query):
+    @classmethod
+    def new(cls, model, raw, query):
         print('new', raw)
         ref, index = raw['__position__']
         query.models.insert(index, model)
@@ -247,23 +247,23 @@ class PageController(Reactive):
             for node, html in query.nodes:
                 html = html.strip()
                 n_ = jq(html)
-                n_.attr('reactive_id', model.id)
+                n_.attr('reactive-id', model.id)
                 node.append(n_)
-                parse(model, n_, query)
+                parse(n_, model, query)
         elif ref == 'before':
             print('BEFORE')
             for node, html in query.nodes:
                 html = html.strip()
                 n_ = jq(html)
-                n_.attr('reactive_id', model.id)
+                n_.attr('reactive-id', model.id)
                 node.prepend(n_)
-                parse(model, n_, query)
+                parse(n_, model, query)
         else:
             print('AFTER')
             for node, html in query.nodes:
                 html = html.strip()
                 n_ = jq(html)
-                n_.attr('reactive_id', model.id)
-                ref = node.children("[reactive_id='"+ref+"']")
+                n_.attr('reactive-id', model.id)
+                ref = node.children("[reactive-id='"+ref+"']")
                 ref.after(n_)
-                parse(model, n_, query)
+                parse(n_, model, query)

@@ -10,7 +10,8 @@ from lxml.html import InputElement
 
 
 from components.main.reactive import Model, reactive
-from components.main.page import Query, parse, PageController
+from components.main.page import parse, PageController
+from components.main.query import Query
 import components.main.page
 from pyquery import PyQuery
 
@@ -58,6 +59,7 @@ components.main.page.jq = jq
 
 class MyQuery(Query):
     _collection = 'A'
+    reactives = ['selected']
 
     def query(self):
         return {'x': {'$gte': self.a, '$lte': self.b}}
@@ -65,22 +67,42 @@ class MyQuery(Query):
 
 class MyController(PageController):
     reactives = ['a', 'b']
+    ws = Mock()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.ws = Mock()
+
         @reactive
         def f():
-            #q = MyQuery('', '', sort=(('x', 1),), skip=0, limit=1, a=self.a, b=self.b)
-            self.q = self.subscribe(id='query_id', klass=MyQuery, name='', sort=(('x', 1),), skip=0, limit=1, a=self.a, b=self.b)
+            self.q = self.subscribe(id='0', klass=MyQuery, name='', sort=(('x', 1),), skip=0, limit=1, a=self.a, b=self.b)
+            a = A(y=0, z=9)
+            self.q.models = [a]
+            self.q.selected = a
+
+            self.q2 = self.subscribe(id='1', klass=MyQuery, name='', sort=(('x', 1),), skip=0, limit=1, a=self.a, b=self.b)
+            b = B(x=0, y=0)
+            self.q2.models = [b]
+            self.q2.selected = b
 
     def x(self):
         return False
 
 
+class B(Model):
+    objects = {}
+    reactives = ['x', 'y']
+
+    def f(self, q1, ma, q0, c):
+        print('>>>', self, q1, ma, q0, c)
+        if self is q1.selected and ma is q0.selected:
+            return 'Eureka!!!'
+        else:
+            return 'None'
+
+
 class A(Model):
     objects = {}
-    reactives = ['y', 'z', 'flag']
+    reactives = ['y', 'z', 'flag', 'post']
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -92,11 +114,15 @@ class A(Model):
     def h(self):
         return self.z != 9
 
-    def hello(self):
+    def hello(self, *args):
         return 'hello world!' + self.post
 
     def click(self, q):
         print('click')
+
+    def f(self, *args):
+        print('>>>', *args)
+        return 'f'
 
 class EventKeyUp:
     def __init__(self, which):
@@ -107,13 +133,13 @@ def test_attr():
     InputElement.selectionStart = 0
 
     a = A(id=None, y=0, z=9)
-    node = jq("<div id='a' class='container'><input r id='0' attr='y integer_getter integer_setter'></div>")
+    node = jq("<div id='a'><input r id='0' attr='y integer_getter integer_setter'></div>")
     components.main.page.document = node
     class MyQuery(Query):
         reactives = []
     q = MyQuery('', '', None, 0, 1)
 
-    parse(a, node, q)
+    parse(node, a, q)
 
     n = node.find('#0')
     n.keyup(event=EventKeyUp(44))
@@ -131,13 +157,13 @@ def test_attr_phone():
     InputElement.selectionStart = 0
 
     a = A(id=None, y='659688973', z=9)
-    node = jq("<div id='a' class='container'><input r id='0' attr='y phone_getter phone_setter'></div>")
+    node = jq("<div id='a'><input r id='0' attr='y phone_getter phone_setter'></div>")
     components.main.page.document = node
     class MyQuery(Query):
         reactives = []
     q = MyQuery('', '', None, 0, 1)
 
-    parse(a, node, q)
+    parse(node, a, q)
 
     n = node.find('#0')
     n.keyup(event=EventKeyUp(44))
@@ -176,13 +202,13 @@ def test_attr_datetime():
     InputElement.selectionStart = 0
 
     a = A(id=None, y=datetime.datetime(2015,12,31), z=9)
-    node = jq("<div id='a' class='container'><input r id='0' attr='y datetime_getter datetime_setter'></div>")
+    node = jq("<div id='a'><input r id='0' attr='y datetime_getter datetime_setter'></div>")
     components.main.page.document = node
     class MyQuery(Query):
         reactives = []
     q = MyQuery('', '', None, 0, 1)
 
-    parse(a, node, q)
+    parse(node, a, q)
 
     n = node.find('#0')
     n.keyup(event=EventKeyUp(44))
@@ -207,76 +233,47 @@ def test_attr_datetime():
     assert a.y == datetime.datetime(2015, 12, 31)
 
 def test_if_if():
-    node = jq('<div class="page"><div id="a" if="{a}"><div id="b" if="{b}"><div id="0" class="template">hola{hhh}</div></div></div></div>')
+    node = jq('<div class="page"><div id="a" if="a"><div id="b" if="b"><div id="0" each="0">hola{hhh}</div></div></div></div>')
     global document
     document = node
     components.main.page.document = node
     c = MyController(a=True, b=True)
-    parse(c, node, None)
-    assert str(node) == '<div class="page"><div id="a" if="{a}"><div id="b" if="{b}"><div id="0" class="template">hola{hhh}</div></div></div></div>'
+    parse(node, c)
+    assert str(node) == '<div class="page"><div id="a" if="a"><div id="b" if="b"><div id="0" each="0">hola{hhh}</div></div></div></div>'
     c.a = False
-    assert str(node) == '<div class="page"><div id="a" if="{a}"></div></div>'
+    assert str(node) == '<div class="page"><div id="a" if="a"></div></div>'
     c.b = False
-    assert str(node) == '<div class="page"><div id="a" if="{a}"></div></div>'
+    assert str(node) == '<div class="page"><div id="a" if="a"></div></div>'
     c.b = True
-    assert str(node) == '<div class="page"><div id="a" if="{a}"></div></div>'
+    assert str(node) == '<div class="page"><div id="a" if="a"></div></div>'
     c.a = True
-    assert str(node) == '<div class="page"><div id="a" if="{a}"><div id="b" if="{b}"><div id="0" class="template">hola{hhh}</div></div></div></div>'
+    assert str(node) == '<div class="page"><div id="a" if="a"><div id="b" if="b"><div id="0" each="0">hola{hhh}</div></div></div></div>'
 
 
 def test_class_and_if_model():
     a = A(id=None, y=8, z=9, post='')
-    node = jq("<div id='a' class='container'><div r id='0' class={hello}>{y}</div><div id='b' if={flag}><div r id='1'>{z}</div></div></div>")
+    node = jq("<div id='a'><div r id='0' class={hello}>{y}</div><div id='b' if='flag'><div r id='1'>{z}</div></div></div>")
     components.main.page.document = node
     class MyQuery(Query):
         reactives = []
     q = MyQuery('', '', None, 0, 1)
-    parse(a, node, q)
+    parse(node, a, q)
 
     a.z = 11
-    assert str(node) == '<div id="a" class="container"><div r="" id="0" class="hello world!">8</div><div id="b" if="{flag}"><div r="" id="1">11</div></div></div>'
+    assert str(node) == '<div id="a"><div r="" id="0" class="hello world!">8</div><div id="b" if="flag"><div r="" id="1">11</div></div></div>'
     print('a.z=9')
     a.z = 9
-    assert str(node) == '<div id="a" class="container"><div r="" id="0" class="hello world!">8</div><div id="b" if="{flag}"></div></div>'
+    assert str(node) == '<div id="a"><div r="" id="0" class="hello world!">8</div><div id="b" if="flag"></div></div>'
     print('a.z=13')
     a.z = 13
-    assert str(node) == '<div id="a" class="container"><div r="" id="0" class="hello world!">8</div><div id="b" if="{flag}"><div r="" id="1">13</div></div></div>'
+    assert str(node) == '<div id="a"><div r="" id="0" class="hello world!">8</div><div id="b" if="flag"><div r="" id="1">13</div></div></div>'
     print('a.post x')
     a.post = 'x'
-    assert str(node) == '<div id="a" class="container"><div r="" id="0" class="hello world!x">8</div><div id="b" if="{flag}"><div r="" id="1">13</div></div></div>'
-
-
-def test_on_click():
-    a = A(id=None, y=8, z=9)
-    node = jq("<div class='container'><div r id='0' on-click={click}>{y}</div></div>")
-    components.main.page.document = node
-    class MyQuery(Query):
-        reactives = []
-    q = MyQuery('', '', None, 0, 1)
-    parse(a, node, q)
-
-    n = node.find('#0')
-    n.click()
-
-
-def _test_integer_value():
-    a = A(id=None, y=8, z=9)
-    node = jq("<div id='a' class='container'><input r id='0' integer-value={y}></div>")
-    components.main.page.document = node
-    class MyQuery(Query):
-        reactives = []
-    q = MyQuery('', '', None, 0, 1)
-    parse(a, node, q)
-
-    n = node.find('#0')
-    assert n.val() == '8'
-    n.val('10')
-    n.keyup()
-    assert a.y == 10
+    assert str(node) == '<div id="a"><div r="" id="0" class="hello world!x">8</div><div id="b" if="flag"><div r="" id="1">13</div></div></div>'
 
 
 def test_on_click_final():
-    node = jq('<div id="0" query-id="0" class="container"><span id="if1" if="{flag}"><span r id="hoja1" on-click={click}>{y}</span></span></div>')
+    node = jq('<div id="0"><span id="if1" if="flag"><span r id="hoja1" on-click="click">{y}</span></span></div>')
     components.main.page.document = node
     a = A(id=None, y=0, z=19)
 
@@ -289,7 +286,7 @@ def test_on_click_final():
     #c = MyController()
     q = MyQuery('', '', None, 0, 1)
 
-    parse(a, node, q)
+    parse(node, a, q)
     assert len(node.find('#hoja1')) == 1
     assert node.find('#hoja1').text() == '0'
     print('a.z=...1')
@@ -298,3 +295,14 @@ def test_on_click_final():
     a.z = 9
 
     assert len(node.find('#hoja1')) == 0
+
+
+def test_nested():
+    node = jq('<div class="page"><div id="a" each="0"><div id="b" r>{f}</div><div id="c" each="1"><span id="d" r>{f}</span></div></div></div>')
+    global document
+    document = node
+    components.main.page.document = node
+    c = MyController(a=True, b=True)
+    parse(node, c)
+    print(node)
+    assert False

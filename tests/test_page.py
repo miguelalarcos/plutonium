@@ -81,7 +81,8 @@ class MyController(PageController):
 
             self.q2 = self.subscribe(id='1', klass=MyQuery, name='', sort=(('x', 1),), skip=0, limit=1, a=self.a, b=self.b)
             b = B(x=0, y=0)
-            self.q2.models = [b]
+            b2 = B(x=0, y=0)
+            self.q2.models = [b, b2]
             self.q2.selected = b
 
     def x(self):
@@ -91,6 +92,12 @@ class MyController(PageController):
 class B(Model):
     objects = {}
     reactives = ['x', 'y']
+
+    def g(self, q1, ma, *args):
+        if self is q1.selected:
+            return True
+        else:
+            return False
 
     def f(self, q1, ma, q0, c):
         print('>>>', self, q1, ma, q0, c)
@@ -298,7 +305,7 @@ def test_on_click_final():
 
 
 def test_nested():
-    node = jq('<div class="page"><div id="a" each="0"><div id="b" r>{f}</div><div id="c" each="1"><span id="d" r>{f}</span></div></div></div>')
+    node = jq('<div class="page"><div id="a" each="0"><div id="b" r>{f}</div><div id="c" each="1"><span if="g" id="d" r><span id="e" r>{f}</span></span></div></div></div>')
     global document
     document = node
     components.main.page.document = node

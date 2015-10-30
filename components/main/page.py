@@ -14,8 +14,13 @@ def if_function(if_, node, html, *args):
     print('if function', if_)
     if is_alive(node):
         val = getattr(args[0], if_)
+        if callable(val):
+            val = val(*args[1:])
+        print('val boolean', val)
+        if (not val and len(node.children()) == 0) or (val and len(node.children()) > 0):
+            print('return', node)
+            return
         if not val:
-            print('flag', val)
             for ch in node.find('[r]'):
                 ch = jq(ch)
                 if ch.data('helper'):
@@ -23,18 +28,17 @@ def if_function(if_, node, html, *args):
                         c.reset(h)
             node.children().remove()
         else:
-                print('flag', val)
-                children = jq(html)
-                node.append(children)
-                for ch in children:
-                    parse(jq(ch), *args)
+            children = jq(html)
+            node.append(children)
+            for ch in children:
+                parse(jq(ch), *args)
 
 
 def render(node, template, *args):
     model = args[0]
     if template is None:
         return
-    print('render')
+    print('render', node, is_alive(node))
     if is_alive(node):
         attrs = re.findall('\{[a-zA-Z_0-9]+\}', template)
         dct = {}
